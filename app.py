@@ -6,12 +6,12 @@ import boto3
 from botocore.exceptions import ClientError
 
 # Local setting, this needs to be change to environment variable for Lambda deployment  
-STAC_BUCKET_NAME = "stac-harvest-json-dev"
-GEOCORE_TEMPLATE_BUCKET_NAME = "stac-harvest-geocore-geojson-dev" 
-STAC_GEOCORE_BUCKET_NAME = "stac-translate-to-geocore-geojson-dev" 
+STAC_BUCKET_NAME = os.environ['STAC_BUCKET_NAME']
+GEOCORE_TEMPLATE_BUCKET_NAME = os.environ['GEOCORE_TEMPLATE_BUCKET_NAME']
+STAC_GEOCORE_BUCKET_NAME = os.environ['STAC_GEOCORE_BUCKET_NAME'] 
 BUCKET_LOCATION = "ca-central-1"
 SOURCE = 'ccmeo'
-
+GEOCORE_TEMPLATE_NAME = 'geocore-format-null-template.json'
 
 def lambda_handler(event, context):
     filename_list = s3_filenames(STAC_BUCKET_NAME)
@@ -19,7 +19,7 @@ def lambda_handler(event, context):
 
     # Load GeoCore null example 
     filename_geocore_list = s3_filenames(GEOCORE_TEMPLATE_BUCKET_NAME)
-    filename_geocore = filename_geocore_list[filename_geocore_list.index("geocore-geojson-format-null_v6.json")]
+    filename_geocore = filename_geocore_list[filename_geocore_list.index(GEOCORE_TEMPLATE_NAME)]
     
     geocore_body= open_s3_file(GEOCORE_TEMPLATE_BUCKET_NAME, filename_geocore)
     geocore_body_dict = json.loads(geocore_body)

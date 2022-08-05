@@ -5,14 +5,21 @@ import logging
 import boto3 
 from botocore.exceptions import ClientError
 
-# Local setting, this needs to be change to environment variable for Lambda deployment  
+  
 STAC_BUCKET_NAME = os.environ['STAC_BUCKET_NAME']
 GEOCORE_TEMPLATE_BUCKET_NAME = os.environ['GEOCORE_TEMPLATE_BUCKET_NAME']
 STAC_GEOCORE_BUCKET_NAME = os.environ['STAC_GEOCORE_BUCKET_NAME'] 
+
+""" dev setting 
+STAC_BUCKET_NAME = "webpresence-stac-json-dev"
+GEOCORE_TEMPLATE_BUCKET_NAME = "webpresence-geocore-template-dev"
+STAC_GEOCORE_BUCKET_NAME = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
+""" 
+
 BUCKET_LOCATION = "ca-central-1"
 SOURCE = 'ccmeo'
 GEOCORE_TEMPLATE_NAME = 'geocore-format-null-template.json'
-
+ 
 def lambda_handler(event, context):
     filename_list = s3_filenames(STAC_BUCKET_NAME)
     source = SOURCE  
@@ -225,6 +232,21 @@ def stac_to_geocore_properties(geocore_features_properties_dict,item_body_dict,s
             "date": None
         }
      }
+     
+    keywords_dict = {
+        "en": "stac",
+        "fr": "stac"
+            }
+            
+    # property_geometry: POLYGON((-95.15 41.67, -74.3 41.67, -74.3 56.85, -95.15 56.85, -95.15 41.67))
+    bbox = item_body_dict["bbox"]
+    west = round(bbox[0], 2)
+    south = round(bbox[1],2)
+    east = round(bbox[2],2)
+    north = round(bbox[3],2)
+    geometry_str = "POLYGON((" + str(west) + " " + str(south) +', ' + str(east) +" "+ str(south) + ", " + str(east) +" "+ str(north) + ", " + str(west) +" "+ str(north) + ", " + str(west) +" "+ str(south) + "))"
+            
+
     # Update the fields value in the geocore properties 
     geocore_features_properties_dict.update({"id": source + "_" + collection_name + "_" + item_id})
     geocore_features_properties_dict.update({"title":title_dict})
@@ -234,6 +256,8 @@ def stac_to_geocore_properties(geocore_features_properties_dict,item_body_dict,s
     geocore_features_properties_dict.update({"dateStamp":datetime})
     geocore_features_properties_dict.update({"sourceSystemName":source})
     geocore_features_properties_dict.update({"contact":[source]})
+    geocore_features_properties_dict.update({"keywords":keywords_dict})
+    geocore_features_properties_dict.update({"geometry":geometry_str})
     #print(json.dumps(geocore_features_properties_dict, indent = 4, sort_keys=False)) #Pretty Printing JSON string
     
     return geocore_features_properties_dict

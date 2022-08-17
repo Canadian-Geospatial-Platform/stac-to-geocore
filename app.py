@@ -10,7 +10,8 @@ STAC_BUCKET_NAME = os.environ['STAC_BUCKET_NAME']
 GEOCORE_TEMPLATE_BUCKET_NAME = os.environ['GEOCORE_TEMPLATE_BUCKET_NAME']
 STAC_GEOCORE_BUCKET_NAME = os.environ['STAC_GEOCORE_BUCKET_NAME'] 
 
-""" dev setting 
+""" 
+#dev setting 
 STAC_BUCKET_NAME = "webpresence-stac-json-dev"
 GEOCORE_TEMPLATE_BUCKET_NAME = "webpresence-geocore-template-dev"
 STAC_GEOCORE_BUCKET_NAME = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
@@ -23,6 +24,10 @@ GEOCORE_TEMPLATE_NAME = 'geocore-format-null-template.json'
 def lambda_handler(event, context):
     filename_list = s3_filenames(STAC_BUCKET_NAME)
     source = SOURCE  
+    
+    ''' remove the stac files from the STAC_GEOCORE_BUCKET_NAME S3 bucket 
+    delete_uuids(filename_list, bucket=STAC_GEOCORE_BUCKET_NAME)
+    '''
 
     # Load GeoCore null example 
     filename_geocore_list = s3_filenames(GEOCORE_TEMPLATE_BUCKET_NAME)
@@ -67,7 +72,7 @@ def lambda_handler(event, context):
             print(f'Some error occured translating step 3 for filename {filename}')
         
         try: 
-            # Step 4 eturn the updated geocore full body 
+            # Step 4 Return the updated geocore full body 
             geocore_updated_body = return_updated_geocore_body(updated_geocore_features_dict,geocore_features_properties_dict)
             #print(json.dumps(geocore_updated_body, indent = 4, sort_keys=False)) #Pretty Printing JSON string 
         except: 
@@ -75,7 +80,7 @@ def lambda_handler(event, context):
             print(f'Some error occured translating step 4 for filename {filename}')
         
         # Step 5: Upload the updated geocore json to S3 
-        filenames1 = filename.split(".")[0] + ".geojson"
+        filenames1 = source + "_"  + filename.split(".")[0] + ".geojson" #Add source to sync with properties "id" 
         upload_json_s3(filenames1, bucket=STAC_GEOCORE_BUCKET_NAME, json_data=geocore_updated_body, object_name=None)
         count += 1 
         print("STAC items have been translated into geocore file '" + filenames1 + "' in " + STAC_GEOCORE_BUCKET_NAME)
@@ -144,15 +149,25 @@ def stac_to_geocore_properties_options(geocore_features_properties_dict, item_bo
             # Replace value with the match value in 'Option'. 
             # get() can return None if key does not exist, so replacement could be None  
             url = value_dict.get('href')  
-            name = value_dict.get("title")      
+            #name = value_dict.get('title')      
+            type = value_dict.get('type') 
+            if type is None:
+                type = 'unknown'
+            
             option_dic = {
                 "url": url,
-                "protocol": None,
+                "protocol": 'Unknown',
                 "name":{
-                    "en":name,
-                    "fr":name
+                    "en":url,
+                    "fr":url
+                },
+                "description":{
+                    "en":'unknown' + ';' + type + ';' +'eng',
+                    "fr":'unknown' + ';' + type + ';' +'eng'
                 }
             }
+            
+
             options_list.append(option_dic)
             
     geocore_features_properties_dict.update({"options":options_list})
@@ -200,8 +215,8 @@ def stac_to_geocore_properties(geocore_features_properties_dict,item_body_dict,s
             }
     date = {
         "published": {
-            "text": None,
-            "date": None
+            "text": 'publication; publication',
+            "date": date_created
         },
         "created": {
             "text": 'creation; création',
@@ -234,8 +249,8 @@ def stac_to_geocore_properties(geocore_features_properties_dict,item_body_dict,s
      }
      
     keywords_dict = {
-        "en": "stac",
-        "fr": "stac"
+        "en": "SpatialTemporal Asset Catalogs (STAC)",
+        "fr": "SpatialTemporal Asset Catalogs (STAC)"
             }
             
     # property_geometry: POLYGON((-95.15 41.67, -74.3 41.67, -74.3 56.85, -95.15 56.85, -95.15 41.67))
@@ -245,8 +260,30 @@ def stac_to_geocore_properties(geocore_features_properties_dict,item_body_dict,s
     east = round(bbox[2],2)
     north = round(bbox[3],2)
     geometry_str = "POLYGON((" + str(west) + " " + str(south) +', ' + str(east) +" "+ str(south) + ", " + str(east) +" "+ str(north) + ", " + str(west) +" "+ str(north) + ", " + str(west) +" "+ str(south) + "))"
+    
+    # property_contact: "contact": [contacts_Array]
+    """
+    Hardcoded, this organization only applied to CCMEO datacube 
+    """
+    coordinates=[[[west, south], [east, south], [east, north], [west, north], [west, south]]]
+    contact = {
+        'organisation':{
+            'en':'Government of Canada;Natural Resources Canada;Strategic Policy and Innovation Sector',
+            'fr':'Gouvernement du Canada;Ressources naturelles Canada;Secteur de la politique stratégique et de l’innovation'
+        },
+        'country':{
+            'en':'canada',
+            'fr':'canada(le)'
+        }, 
+        'email':{
+            'en':'geoinfo@nrcan-rncan.gc.ca',
+            'fr':'geoinfo@nrcan-rncan.gc.ca'
+        }, 
+        'role':'pointOfContact; contact'
             
-
+    }
+    
+    
     # Update the fields value in the geocore properties 
     geocore_features_properties_dict.update({"id": source + "_" + collection_name + "_" + item_id})
     geocore_features_properties_dict.update({"title":title_dict})
@@ -255,9 +292,13 @@ def stac_to_geocore_properties(geocore_features_properties_dict,item_body_dict,s
     geocore_features_properties_dict.update({"date":date})
     geocore_features_properties_dict.update({"dateStamp":datetime})
     geocore_features_properties_dict.update({"sourceSystemName":source})
-    geocore_features_properties_dict.update({"contact":[source]})
+    geocore_features_properties_dict.update({"contact":[contact]})
     geocore_features_properties_dict.update({"keywords":keywords_dict})
     geocore_features_properties_dict.update({"geometry":geometry_str})
+    geocore_features_properties_dict.update({"type":'dataset'})
+    geocore_features_properties_dict.update({"status":'unknown'})
+    
+    
     #print(json.dumps(geocore_features_properties_dict, indent = 4, sort_keys=False)) #Pretty Printing JSON string
     
     return geocore_features_properties_dict
@@ -348,3 +389,42 @@ def open_s3_file(bucket, filename):
     except ClientError as e:
         logging.error(e)
         return False 
+
+
+
+def delete_uuids(uuid_deleted_list, bucket):
+    """ Delete the json files in uuid_deleted_list from a s3 bucket
+    Return a message to the user: delete xx uuid from xx bucket 
+    :parm uuid_deleted_list: a list of uuid needs to be deleted 
+    :parm bucket:bucket to delete from 
+    """
+    error_msg = None 
+    count = 0 
+    for uuid in uuid_deleted_list:    
+        try: 
+            
+            uuid_filename = uuid.split(".")[0] + ".geojson" 
+            print(uuid_filename)
+            if delete_json_streams(uuid_filename, bucket):
+                count += 1
+        except ClientError as e: 
+            logging.error(e)
+            error_msg += e
+    print('Deleted ', count, " records from S3 ", bucket)
+    return error_msg
+
+def delete_json_streams(filename, bucket): 
+    """Delete a json file to an S3 bucket
+    :param file_name: File to upload
+    :param bucket: Bucket to upload to
+    :return: True if file was deleted, else False
+    """
+
+    s3 = boto3.resource('s3')
+    try: 
+        s3object = s3.Object(bucket, filename)
+        response = s3object.delete()
+    except ClientError as e: 
+        logging.error(e)
+        return False
+    return True 

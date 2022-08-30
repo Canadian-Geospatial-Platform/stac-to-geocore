@@ -1,7 +1,9 @@
 # STAC_to_GeoCore
-An AWS Lambda that iterates through the stac folder and translate each STAC file to a single GeoCore file. For more details about the GeoCore format, refer to [GeoCore format wiki](https://redmine.gcgeo.gc.ca/redmine/projects/geo-ca/wiki/Current_GeoCore_format). STAC folder contains the STAC Item, which is simply a GeoJSON Feature with a well-defined set of additional attributes ("foreign members"). For more information, refer to the [STAC Specification](https://github.com/radiantearth/stac-spec). 
+An AWS Lambda that iterates through a S3 Bucket containing STAC items (see [STAC_Harvester](https://github.com/Canadian-Geospatial-Platform/STAC_harvester)) and translate each STAC item to a single GeoCore file. For more details about the GeoCore format, refer to [GeoCore format wiki](https://redmine.gcgeo.gc.ca/redmine/projects/geo-ca/wiki/Current_GeoCore_format). 
 
-## STAC to GeoCore translate rules 
+STAC items are simply GeoJSON Features with a well-defined set of additional attributes ("foreign members"). For more information, refer to the [STAC Specification](https://github.com/radiantearth/stac-spec). 
+
+## STAC to GeoCore translation rules 
 
 1. For STAC item fields that are 1) non-GeoJSON inheritated and 2) required  
  * **stac_version**: put it to geocore 'features' 

@@ -1,31 +1,34 @@
 # STAC_to_GeoCore
-An AWS Lambda that iterates through a S3 Bucket containing STAC items (see [STAC_Harvester](https://github.com/Canadian-Geospatial-Platform/STAC_harvester)) and translate each STAC item to a single GeoCore file. For more details about the GeoCore format, refer to [GeoCore format wiki](https://redmine.gcgeo.gc.ca/redmine/projects/geo-ca/wiki/Current_GeoCore_format). 
+SpatioTemporal Asset Catalog (STAC) is a Cloud-native geospatial standard. STAC key components are items, catalogs, collections, and the STAC API. STAC items are simply GeoJSON Features with a well-defined set of additional attributes ("foreign members"). For more information, refer to the [STAC Specification](https://github.com/radiantearth/stac-spec), [STAC page](https://stacspec.org/en), and [STAC index](https://stacindex.org/catalogs)
 
-STAC items are simply GeoJSON Features with a well-defined set of additional attributes ("foreign members"). For more information, refer to the [STAC Specification](https://github.com/radiantearth/stac-spec). 
+The STAC harvest and translate process is Harvest -> STAC to GeoCore Tranform -> GeoCore to Parquet -> Geo (search).
+
+STAC_to_GeoCore is an AWS Lambda that iterates through a S3 Bucket containing STAC items (see [STAC_Harvester](https://github.com/Canadian-Geospatial-Platform/STAC_harvester)) and translate each STAC item to a single GeoCore file. For more details about the GeoCore format, refer to [GeoCore format wiki](https://redmine.gcgeo.gc.ca/redmine/projects/geo-ca/wiki/Current_GeoCore_format). 
+
 
 ## STAC to GeoCore translation rules 
-
-1. For STAC item fields that are 1) non-GeoJSON inheritated and 2) required  
- * **stac_version**: put it to geocore 'features' 
+STAC items are  GeoJSON Features with a well-defined set of additional attributes (i.e., [GeoJSON features](https://datatracker.ietf.org/doc/html/rfc7946) + additional features). 
+1. For STAC item fields that are essential and are not part of non-GeoJSON features   
+ * **stac_version** ->  GeoCore 'features' 
  * **id**: Do not put into GeoCore (it might be a conflict with the "id" in geocore geojson property)  
  * **bbox**: Do not put into GeoCore 
- * **links**: Put into 'properties' 'options'
- * **assets**: Put into 'properties' 'options'. 
- * **collection**: Put into 'properties' 'parentIdentifier' 
-2. For STAC item fields that are GeoJSON inheritated 
+ * **links** -> GeoCore'properties' 'options'
+ * **assets** -> GeoCore 'properties' 'options'. 
+ * **collection** ->GeoCore 'properties' 'parentIdentifier' 
+2. For STAC item fields that are GeoJSON features  
  * **type**
-     * "type": always be 'feature" for item, put it into geocore geojson 'features' 'type' 
+     * "type" ->  GeoCore 'features' 'type' ( always be 'feature" for item)
  * **geometry**
-     * "type": "polygon". "line", or "point", replace  "features" - "geometry" - "type" 
-     * "coordinate": STAC item "coordinate" include abundant information that we do not need, we will remove the stac "coordinate" and replace the geocore geojson "coordinate" with the STAC item "bbox" field using format [[ west, south ], [ east, south ], [ east, north ], [ west, north ], [ west, south]] 
+     * "type": ->  GeoCore "features" - "geometry" - "type" ("polygon". "line", or "point",)
+     * "coordinate" -> STAC item "coordinate" include abundant information that we do not need, we will remove the stac "coordinate" and replace the geocore geojson "coordinate" with the STAC item "bbox" field using format [[ west, south ], [ east, south ], [ east, north ], [ west, north ], [ west, south]] 
  * **properties**
  <br>STAC properties include 1) common fields that are listed in [commond metadata](https://github.com/radiantearth/stac-spec/blob/master/item-spec/common-metadata.md#instrument) 2) custimized propoerties from STAC extension. 
      * Common STAC properties 
          * Fields can be translate to geocore propertites 
-             * "description": GeoCore 'properties' 'description'. we duplicate the english value for the french value. Note sometime, STAC description is put on the first layer of fields 
-             * "created" - GeoCore 'properties' 'date' 'created'
-             * "updated" - GeoCore 'properties' 'date' 'revision'
-             * "datetime": GeoCore 'properties' 'dateStamp' **must include for a STAC Item**  
+             * "description" -> GeoCore 'properties' 'description'. Duplicate the english value for the french value. Note sometime, STAC description is put on the first layer of fields 
+             * "created" -> GeoCore 'properties' 'date' 'created'
+             * "updated" -> GeoCore 'properties' 'date' 'revision'
+             * "datetime"-> GeoCore 'properties' 'dateStamp' **must include for a STAC Item**  
          * Fields that can not be translated to geocore properties 
              * "title": do not put into GeoCore - we use item id for geocore 'properties' 'title' 
              * "start_datetime": do not put into GeoCore 
@@ -42,13 +45,13 @@ STAC items are simply GeoJSON Features with a well-defined set of additional att
              * "proj":"shape" 
              * "proj":"geometry"  These three "proj" are form the [projection extention](https://github.com/stac-extensions/projection/)
      * GeoCore GeoJSON Propertites that are essential for the search
-         * "id": source + collection name + item id
-         * "title": item id, duplicate the english value for the french value
+         * "id" -> "source" + "collection name" + "item id"
+         * "title" -> item id, duplicate the english value for the french value
          * "keywords_en": nullable
          * "topicCategory": nullable
          * "description_en": nullable
-         * "sourceSystemName": use source ("ccmeo") 
-         * "contact": use source
+         * "sourceSystemName" -> "source" ("ccmeo") 
+         * "contact" -> "source"
 
 # Deployment as an image using AWS SAM 
 In the Cloud9 terminal (or whatever IDE you are using for building serverless local test)

@@ -8,14 +8,14 @@ STAC_to_GeoCore is an AWS Lambda that iterates through a S3 Bucket containing ST
 
 ## STAC to GeoCore translation rules 
 STAC items are  GeoJSON Features with a well-defined set of additional attributes (i.e., [GeoJSON features](https://datatracker.ietf.org/doc/html/rfc7946) + additional features). 
-1. For STAC item fields that are essential and are not part of non-GeoJSON features   
+1. Mandatory STAC item fields    
  * **stac_version** ->  GeoCore 'features' 
  * **id**: Do not put into GeoCore (it might be a conflict with the "id" in geocore geojson property)  
  * **bbox**: Do not put into GeoCore 
  * **links** -> GeoCore'properties' 'options'
  * **assets** -> GeoCore 'properties' 'options'. 
  * **collection** ->GeoCore 'properties' 'parentIdentifier' 
-2. For STAC item fields that are GeoJSON features  
+2. STAC item fields that are GeoJSON inherited features  
  * **type**
      * "type" ->  GeoCore 'features' 'type' ( always be 'feature" for item)
  * **geometry**
@@ -43,15 +43,17 @@ STAC items are  GeoJSON Features with a well-defined set of additional attribute
          * STAC properties from extension - **do not put into GeoCore** 
              * "proj":"epsg"  
              * "proj":"shape" 
-             * "proj":"geometry"  These three "proj" are form the [projection extention](https://github.com/stac-extensions/projection/)
-     * GeoCore GeoJSON Propertites that are essential for the search
-         * "id" -> "source" + "collection name" + "item id"
-         * "title" -> item id, duplicate the english value for the french value
-         * "keywords_en": nullable
-         * "topicCategory": nullable
-         * "description_en": nullable
-         * "sourceSystemName" -> "source" ("ccmeo") 
-         * "contact" -> "source"
+             * "proj":"geometry"  These three "proj" are form the [projection extention](https://github.com/stac-extensions/
+3. GeoCore mandatory fields for geo.ca search
+    * "properties.id" -> "source" + "collection name" + "item id"
+    * "properties.title_en/fr" -> "item id", duplicate the english value for the french value
+    * "properties.keywords_en/fr": "SpatialTemporal Asset Catalogs (STAC)",nullable
+    * "properties.topicCategory": nullable
+    * "properties.description_en/fr": nullable
+    * "sourceSystemName" -> "source" ("ccmeo") 
+    * "properties.contact.organization.en/fr" -> "source"
+    * "properties.contact.role" ->
+    * "properties.geometry" -> translated from STAC item "bbox"
 
 # Deployment as an image using AWS SAM 
 In the Cloud9 terminal (or whatever IDE you are using for building serverless local test)

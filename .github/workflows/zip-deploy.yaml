@@ -25,7 +25,7 @@ jobs:
             rm -rf **/tests
             rm -rf **/__pycache__
           fi
-          zip -r ${func}.zip .
+          zip -r stac_to_geocore.zip .
           cd ..
                    
       - name: Upload zip file artifact

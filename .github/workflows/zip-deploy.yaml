@@ -21,6 +21,7 @@ jobs:
         
       - name: Build project
         run: |
+          echo "$NOW"
           if [[ -f "requirements.txt" ]]; then
             pip install --target . -r requirements.txt           
             rm -rf botocore*
@@ -34,5 +35,5 @@ jobs:
       - name: Upload zip file artifact
         uses: actions/upload-artifact@v3
         with:
-          name: stac-to-geocore-$NOW
-          path: stac-to-geocore-$NOW.zip
+          name: stac-to-geocore-${{ env.NOW }}
+          path: stac-to-geocore-${{ env.NOW }}.zip

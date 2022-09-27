@@ -1,0 +1,35 @@
+name: Build deployment AWS Lambdas as ZIP
+on:
+  push:
+    branches:
+      - 'main' 
+      - 'master'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          
+      - name: Echo intro message
+        run: echo "Building packages"
+        
+      - name: Build project
+        run: |
+          if [[ -f "requirements.txt" ]]; then
+            pip install --target . -r requirements.txt           
+            rm -rf botocore*
+            rm -rf boto3*
+            rm -rf **/tests
+            rm -rf **/__pycache__
+          fi
+          zip -r ${func}.zip .
+          cd ..
+                   
+      - name: Upload zip file artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: stac_to_geocore
+          path: stac_to_geocore.zip

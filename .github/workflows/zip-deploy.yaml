@@ -18,7 +18,7 @@ jobs:
         
       - name: Build project
         run: |
-          datetime_stamp=$(date +'%m/%d/%Y%m%d-%H%M')
+          datetime_stamp=$(date +'%Y%m%d-%H%M')
           if [[ -f "requirements.txt" ]]; then
             pip install --target . -r requirements.txt           
             rm -rf botocore*
@@ -26,11 +26,11 @@ jobs:
             rm -rf **/tests
             rm -rf **/__pycache__
           fi
-          zip -r stac-to-geocore-{$datetime_stamp}.zip .
+          zip -r stac-to-geocore-${datetime_stamp}.zip .
           cd ..
                    
       - name: Upload zip file artifact
         uses: actions/upload-artifact@v3
         with:
-          name: stac-to-geocore-{$datetime_stamp}
-          path: stac-to-geocore-{$datetime_stamp}.zip
+          name: stac-to-geocore-${datetime_stamp}
+          path: stac-to-geocore-${datetime_stamp}.zip

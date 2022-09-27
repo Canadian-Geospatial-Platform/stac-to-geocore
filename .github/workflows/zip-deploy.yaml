@@ -29,11 +29,11 @@ jobs:
             rm -rf **/tests
             rm -rf **/__pycache__
           fi
-          zip -r stac-to-geocore-$NOW.zip .
+          #zip -r stac-to-geocore-$NOW.zip .
           cd ..
                    
       - name: Upload zip file artifact
         uses: actions/upload-artifact@v3
         with:
           name: stac-to-geocore-${{ env.NOW }}
-          path: stac-to-geocore-${{ env.NOW }}.zip
+          path: ${{ github.workspace }}/*

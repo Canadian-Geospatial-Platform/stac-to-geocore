@@ -109,7 +109,7 @@ def lambda_handler(event, context):
                 "features": [coll_features_dict]
                         }
             coll_name = source + '_' + coll_id + '.geojson'
-            msg = upload_json_s3(coll_name, bucket=GEOCORE_TO_PARQUET_BUCKET_NAME, json_data=coll_geocore_updated, object_name=None)
+            msg = upload_json_s3(coll_name, bucket=geocore_to_parquet_bucket_name, json_data=coll_geocore_updated, object_name=None)
             if msg == True: 
                 print(f'Finished mapping Collection : {coll_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')
                 
@@ -140,7 +140,7 @@ def lambda_handler(event, context):
                         "features": [item_geocore_updated]
                         }
                     item_name = source + '_' + coll_id + '_' + item_id + '.geojson'
-                    msg = upload_json_s3(item_name, bucket=GEOCORE_TO_PARQUET_BUCKET_NAME, json_data=item_geocore_updated, object_name=None)
+                    msg = upload_json_s3(item_name, bucket=geocore_to_parquet_bucket_name, json_data=item_geocore_updated, object_name=None)
                     if msg == True: 
                         print(f'Finished mapping item : {item_id}, uploaded the file to bucket: {geocore_to_parquet_bucket_name}') 
         

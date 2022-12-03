@@ -20,7 +20,7 @@ GEOCORE_TEMPLATE_NAME = 'geocore-format-null-template.json'
 GEOCORE_TO_PARQUET_BUCKET_NAME = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
 
 api_root = 'https://datacube.services.geo.ca/api'
-root_name = "CCMEO Datacube API / CCCOT Cube de données API" #must provide en and fr 
+root_name = "CCMEO Data Cube/ CCCOT Cube de données" #must provide en and fr 
 source='ccmeo'
 geocore_template_bucket_name = GEOCORE_TEMPLATE_BUCKET_NAME
 geocore_template_name = GEOCORE_TEMPLATE_NAME
@@ -73,8 +73,12 @@ contact = [{
                 'onlineResources_Description': None 
                 },
             'hoursofService': None, 
+<<<<<<< Updated upstream
             'role': None, 
             
+=======
+            'role': 'pointOfContact; contact', 
+>>>>>>> Stashed changes
         }]
  
 def lambda_handler(event, context):
@@ -87,23 +91,57 @@ def lambda_handler(event, context):
     if response.status_code == 200:
         #Before mharvesting the stac records, we delete the previous stac records from the geojson bucekt 
         #The previous harvest records are saved in lastRun.txt, after deletion, create an empty lastRun.txt to record this run  
-        #TODO fix the return for delete_stac_s3
-        delete_stac_s3(bucket_geojson=geocore_to_parquet_bucket_name, bucket_template=geocore_template_bucket_name)
+        e = delete_stac_s3(bucket_geojson=geocore_to_parquet_bucket_name, bucket_template=geocore_template_bucket_name)
+        if e != None: 
+            error_msg += e
         print('Creating a new lastRun.txt')
         f = open("lastRun.txt","w+") 
-        #Loop through each STAC collection, harvest the stac json body and then mapp it to GeoCore 
-        #Then loop through items within the collection, harvest the item json bady and map the item GeoCore 
+        """STAC harvesting and mapping workflow 
+        First, harvest and translate STAC catalog (root api endpoint). 
+        Then, loop through each STAC collection, harvest the collection json body and then mapp collection to GeoCore. 
+        Lastly, loop through items within the collection, harvest the item json bady and map item to GeoCore. 
+        """         
         str_data = json.loads(response.text)
         collection_data = str_data['collections']
+              
+        #Catalog    
+        response_root = requests.get(f'{api_root}/')
+        root_data = json.loads(response_root.text)   
+        root_id = root_data['id']
+        root_des = root_data['description']
+        root_links = root_data['links']
+        
+        template= open_file_s3(geocore_template_bucket_name, geocore_template_name)
+        geocore_dict = json.loads(template)
+        geocore_features_dict = geocore_dict['features'][0]
+        root_features_dict = geocore_features_dict #empty 
+        
+        coll_bbox = collection_data[1]['extent']['spatial']['bbox'][0]
+        root_geometry_dict =to_features_geometry(geocore_features_dict, bbox=coll_bbox, geometry_type='Polygon')
+        root_properties_dict = root_to_features_properties(geocore_features_dict,root_name, root_links, root_id, root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory)
+        
+        root_features_dict.update({"properties": root_properties_dict})
+        root_features_dict.update({"geometry": root_geometry_dict})
+        root_geocore_updated = {
+            "type": "FeatureCollection",
+            "features": [root_features_dict]
+                    }
+        root_upload = source + '_root_' + root_id + '.geojson'
+        msg = upload_json_s3(root_upload, bucket=geocore_to_parquet_bucket_name, json_data=root_geocore_updated, object_name=None)
+        if msg == True: 
+            print(f'Finished mapping root : {root_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')    
+        f.write(f"{root_upload}\n") 
+        
+        # Collection
         for coll_dict in collection_data:
             coll_id, coll_bbox, time_begin, time_end, coll_links, coll_assets, title_en, title_fr,  description_en, description_fr, keywords_en, keywords_fr = get_collection_fields(coll_dict=coll_dict)  
-            #Reload the geocore format template everytime befor the mapping   
+            #Reload the geocore format template from S3 to make sure we are working on the null template    
             template= open_file_s3(geocore_template_bucket_name, geocore_template_name)
             geocore_dict = json.loads(template)
             geocore_features_dict = geocore_dict['features'][0]
             #STAC collection to GeoCore 
             coll_geometry_dict =to_features_geometry(geocore_features_dict, bbox=coll_bbox, geometry_type='Polygon')
-            coll_properties_dict = to_features_properties(geocore_features_dict, coll_dict, item_dict=None,stac_type='collection', root_name=root_name, status=status,maintenance=maintenance, useLimits_en=useLimits_en,
+            coll_properties_dict = to_features_properties(geocore_features_dict, coll_dict, item_dict=None,stac_type='collection', root_name=root_name, root_id = root_id, status=status,maintenance=maintenance, useLimits_en=useLimits_en,
             useLimits_fr=useLimits_fr,spatialRepresentation=spatialRepresentation,contact=contact, type_data=type_data,topicCategory=topicCategory)
             coll_features_dict = geocore_features_dict #empty 
             coll_features_dict.update({"properties": coll_properties_dict})
@@ -118,7 +156,7 @@ def lambda_handler(event, context):
                 print(f'Finished mapping Collection : {coll_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')
                 
             f.write(f"{coll_name}\n")        
-            # STAC item to GeoCore mapping 
+            # Item 
             #TODO add error handling if reuqest is null 
             item_response = requests.get(f'{api_root}/collections/{coll_id}/items')
             if item_response.status_code == 200: 
@@ -133,7 +171,7 @@ def lambda_handler(event, context):
                     print(f'Start to mapping item_id: {item_id}, collection_id : {coll_id}, title: {title_en}') 
                     #TODO add error handling for the item mapping to geocore 
                     item_geometry_dict =to_features_geometry(geocore_features_dict, bbox=item_bbox, geometry_type='Polygon')
-                    item_properties_dict = to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type='item', root_name=root_name, status=status,maintenance=maintenance, useLimits_en=useLimits_en,
+                    item_properties_dict = to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type='item', root_name=root_name, root_id=root_id, status=status,maintenance=maintenance, useLimits_en=useLimits_en,
                     useLimits_fr=useLimits_fr,spatialRepresentation=spatialRepresentation,contact=contact, type_data=type_data,topicCategory=topicCategory)
                     #Update the GeoCore body 
                     item_features_dict=geocore_features_dict
@@ -141,7 +179,7 @@ def lambda_handler(event, context):
                     item_features_dict.update({"geometry": item_geometry_dict})
                     item_geocore_updated = {
                         "type": "FeatureCollection",
-                        "features": [item_geocore_updated]
+                        "features": [item_features_dict]
                         }
                     item_name = source + '_' + coll_id + '_' + item_id + '.geojson'
                     msg = upload_json_s3(item_name, bucket=GEOCORE_TO_PARQUET_BUCKET_NAME, json_data=item_geocore_updated, object_name=None)
@@ -337,14 +375,18 @@ def links_to_properties_options(links_list, id, root_name, title_en, title_fr, s
         href = var.get('href')  
         rel = var.get('rel')  
         type_str = var.get('type')
+        name=var.get('title')
         if type_str: 
             type_str=type_str.replace(';', ',') # for proper display on metadata page 
         # rel type: https://github.com/radiantearth/stac-spec/blob/master/item-spec/item-spec.md#relation-types
         if rel == 'collection' or rel == 'dedrived_from':
             continue 
-        if rel == 'self':
+        if rel == 'self'and stac_type != 'root':
             name_en = 'Self - ' + id
             name_fr =  'Soi - ' + id
+        elif rel == 'self' and stac_type == 'root':
+            name_en = 'Root - ' + root_name_en
+            name_fr = 'Racine - ' + root_name_fr
         elif rel == 'root':
             name_en = 'Root - ' + root_name_en
             name_fr = 'Racine - ' + root_name_fr
@@ -355,9 +397,12 @@ def links_to_properties_options(links_list, id, root_name, title_en, title_fr, s
             name_en = 'Parent links '  
             name_fr = 'Parente liens' 
         elif rel == 'items': # this rel type is only for collection 
-            name_en = 'Items linked with this collection' 
-            name_fr = 'éléments liés à cette collection' 
-        else: 
+            name_en = 'Items listings' 
+            name_fr = 'Èléments la liste' 
+        elif name:
+            name_en = name
+            name_fr = name 
+        else:  
             name_en = 'Unknown'
             name_fr = 'Inconnue'
         option_dic = {
@@ -390,7 +435,7 @@ def assets_to_properties_options(assets_list):
                 name_en,name_fr = name.split('/')
             except: 
                 name_en = name
-                name_fr = None      
+                name_fr = name      
         option_dic = {
                     "url": href,
                     "protocol": 'Unknown',
@@ -409,7 +454,7 @@ def assets_to_properties_options(assets_list):
 # stac_to_features_properties 
 #TODO implement *args and **kwargs for properties function 
 # stac_to_features_properties 
-def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type, root_name,status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
+def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type, root_name,root_id,status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
     properties_dict = geocore_features_dict['properties']
     coll_id, bbox, time_begin, time_end, coll_links, coll_assets, title_en, title_fr, description_en, description_fr, keywords_en, keywords_fr = get_collection_fields(coll_dict)
     """
@@ -459,9 +504,9 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
         #title 
         if title_en != None and title_fr!= None: 
             properties_dict['title'].update({"en": 'Collection - ' + title_en})
-            properties_dict['title'].update({"fr": 'Le recueil - ' + title_fr})
-        #parentIdentifier: None for STAC collection  
-        #properties_dict.update({"parentIdentifier": None})
+            properties_dict['title'].update({"fr": 'Collection - ' + title_fr})
+        #parentIdentifier: root id 
+        properties_dict.update({"parentIdentifier": root_id})
         # date: None for STAC collection 
         # Type: hardcoded 
         #temporalExtent
@@ -488,8 +533,8 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
         properties_dict['description'].update({"fr": description_fr})
      #keywords
     if keywords_en!= None and keywords_fr != None: 
-        properties_dict['keywords'].update({"en": 'SpatioTemporalAssetCatalog, ' + keywords_en})
-        properties_dict['keywords'].update({"fr": 'SpatioTemporalAssetCatalog, ' + keywords_fr})
+        properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + keywords_en})
+        properties_dict['keywords'].update({"fr": 'SpatioTemporal Asset Catalog, ' + keywords_fr})
     # topicCategory 
     properties_dict.update({"topicCategory": topicCategory})
     properties_dict.update({"type": type_data})
@@ -625,3 +670,57 @@ def get_item_fields(item_dict):
     except KeyError:
         item_properties = None 
     return item_id, item_bbox, item_links, item_assets, item_properties; 
+
+def root_to_features_properties(geocore_features_dict,root_name, root_links, root_id, root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
+    properties_dict = geocore_features_dict['properties']
+    root_name_en,root_name_fr = root_name.split('/')
+    #id
+    properties_dict.update({"id": root_id})
+    #title = root name 
+    properties_dict['title'].update({"en": 'Root  - ' + root_name_en})
+    properties_dict['title'].update({"fr": 'Racine - ' + root_name_fr})
+    #parentIdentifier: None for STAC catalog   
+    #properties_dict.update({"parentIdentifier": None})
+    #date: None for STAC collection 
+    #Type: hardcoded 
+    #options  
+    links_list = links_to_properties_options(links_list=root_links, id=root_id, root_name=root_name, title_en=None, title_fr=None, stac_type='root')
+    options_list = links_list
+    options_list = [i for n, i in enumerate(options_list) if i not in options_list[n + 1:]] # delete duplicates
+        
+        
+    # The shared attributes between Items and Collections  
+    #descrption 
+    if root_des!= None: 
+        properties_dict['description'].update({"en": root_des})
+        properties_dict['description'].update({"fr": root_des})
+     #keywords
+    properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + source})
+    properties_dict['keywords'].update({"fr": 'SpatioTemporal Asset Catalog, ' + source})
+    # topicCategory 
+    properties_dict.update({"topicCategory": topicCategory})
+    properties_dict.update({"type": type_data})
+    #geometry 
+    west = round(coll_bbox[0], 2)
+    south = round(coll_bbox[1],2)
+    east = round(coll_bbox[2],2)
+    north = round(coll_bbox[3],2)
+    geometry_str = "POLYGON((" + str(west) + " " + str(south) +', ' + str(east) +" "+ str(south) + ", " + str(east) +" "+ str(north) + ", " + str(west) +" "+ str(north) + ", " + str(west) +" "+ str(south) + "))"
+    properties_dict.update({"geometry":geometry_str})
+    #Spatialrepresentation 
+    properties_dict.update({"spatialRepresentation":spatialRepresentation})      
+    #skipped: refsys, refSys_version  
+    properties_dict.update({"status":status})
+    properties_dict.update({"maintenance":maintenance})
+    # Skipped metadataStandard, metadataStandardVersion, metadataStandardVersion, graphicOverview, distributionFormat_name, distributionFormat_format
+    #useLimits 
+    properties_dict['useLimits'].update({"en": useLimits_en})
+    properties_dict['useLimits'].update({"fr": useLimits_fr})
+    #skipped: accessConstraints, otherConstraints, dateStamp, dataSetURI, locale,language
+    #skipped: characterSet, environmentDescription,supplementalInformation
+    # Contact
+    properties_dict.update({'contact': contact})
+    # Skipped: credits, cited, distributor,sourceSystemName
+    # options 
+    properties_dict.update({'options': options_list})
+    return (properties_dict)

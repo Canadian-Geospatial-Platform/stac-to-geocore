@@ -73,12 +73,7 @@ contact = [{
                 'onlineResources_Description': None 
                 },
             'hoursofService': None, 
-<<<<<<< Updated upstream
-            'role': None, 
-            
-=======
             'role': 'pointOfContact; contact', 
->>>>>>> Stashed changes
         }]
  
 def lambda_handler(event, context):

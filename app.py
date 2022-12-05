@@ -6,25 +6,22 @@ import boto3
 from datetime import datetime
 from botocore.exceptions import ClientError
 
-  
-""" Prod setting 
-GEOCORE_TEMPLATE_BUCKET_NAME = os.environ['GEOCORE_TEMPLATE_BUCKET_NAME']
-GEOCORE_TEMPLATE_NAME = os.environ['GEOCORE_TEMPLATE_NAME']
-GEOCORE_TO_PARQUET_BUCKET_NAME = os.environ['GEOCORE_TO_PARQUET_BUCKET_NAME'] 
-
+""" environment variables for lambda
+geocore_template_bucket_name = os.environ['GEOCORE_TEMPLATE_BUCKET_NAME']
+geocore_template_name = os.environ['GEOCORE_TEMPLATE_NAME']
+geocore_to_parquet_bucket_name = os.environ['GEOCORE_TO_PARQUET_BUCKET_NAME']
+api_root = os.environ['STAC_API_ROOT']
+root_name = os.environ['ROOT_NAME']
+source = os.environ['SOURCE']
 """ 
 
-#dev setting 
-GEOCORE_TEMPLATE_BUCKET_NAME = 'webpresence-geocore-template-dev'
-GEOCORE_TEMPLATE_NAME = 'geocore-format-null-template.json'
-GEOCORE_TO_PARQUET_BUCKET_NAME = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
-
+#dev setting  -- comment out for release
+geocore_template_bucket_name = 'webpresence-geocore-template-dev'
+geocore_template_name = 'geocore-format-null-template.json'
+geocore_to_parquet_bucket_name = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
 api_root = 'https://datacube.services.geo.ca/api'
-root_name = "CCMEO Data Cube/ CCCOT Cube de données" #must provide en and fr 
+root_name = "CCMEO Datacube API / CCCOT Cube de données API" #must provide en and fr 
 source='ccmeo'
-geocore_template_bucket_name = GEOCORE_TEMPLATE_BUCKET_NAME
-geocore_template_name = GEOCORE_TEMPLATE_NAME
-geocore_to_parquet_bucket_name = GEOCORE_TO_PARQUET_BUCKET_NAME
     
 # Hardcoded variables for the STAC to GeoCore translation 
 status = 'unknown'
@@ -73,7 +70,7 @@ contact = [{
                 'onlineResources_Description': None 
                 },
             'hoursofService': None, 
-            'role': 'pointOfContact; contact', 
+            'role': None, 
         }]
  
 def lambda_handler(event, context):
@@ -151,7 +148,7 @@ def lambda_handler(event, context):
                 print(f'Finished mapping Collection : {coll_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')
                 
             f.write(f"{coll_name}\n")        
-            # Item 
+            # STAC item to GeoCore mapping 
             #TODO add error handling if reuqest is null 
             item_response = requests.get(f'{api_root}/collections/{coll_id}/items')
             if item_response.status_code == 200: 
@@ -174,10 +171,10 @@ def lambda_handler(event, context):
                     item_features_dict.update({"geometry": item_geometry_dict})
                     item_geocore_updated = {
                         "type": "FeatureCollection",
-                        "features": [item_features_dict]
+                        "features": [item_geocore_updated]
                         }
                     item_name = source + '_' + coll_id + '_' + item_id + '.geojson'
-                    msg = upload_json_s3(item_name, bucket=GEOCORE_TO_PARQUET_BUCKET_NAME, json_data=item_geocore_updated, object_name=None)
+                    msg = upload_json_s3(item_name, bucket=geocore_to_parquet_bucket_name, json_data=item_geocore_updated, object_name=None)
                     if msg == True: 
                         print(f'Finished mapping item : {item_id}, uploaded the file to bucket: {geocore_to_parquet_bucket_name}') 
         
@@ -193,45 +190,27 @@ def lambda_handler(event, context):
         #return error_msg
     print(error_msg)
 
-    
-
-# S3 related functions 
-# Remove one file from S3 bucket 
-#TODO Merge the delete functions 
-def delete_file_s3(filename, bucket): 
-    """Delete a file from an S3 bucket
-    :param file_name: File to delete
-    :param bucket: Bucket for delete file 
-    :return: True if file was deleted, else False
+def delete_filelist_s3(deleted_filelist, bucket):
+    """ Delete the STAC JSON files in deleted_filelist from an s3 bucket
+    Return a message to the user: "Deleted xx records from S3 yy bucket"
+    :parm deleted_filelist: a list of s3 files to be deleted 
+    :parm bucket: s3 bucket to delete from 
     """
     s3 = boto3.resource('s3')
-    try: 
-        s3object = s3.Object(bucket, filename)
-        response = s3object.delete()
-        print("Response: ", response)
-        print(f"Deleted filenames: {filename} from bucket {bucket}")
-    except ClientError as e: 
-        logging.error(e)  
-        return False    
-    return True 
-
-
-def delete_files_s3(deleted_filelist, bucket):
-    """ Delete the geojson files in uuid_deleted_list from a s3 bucket
-    Return a message to the user: delete xx uuid from xx bucket 
-    :parm uuid_deleted_list: a list of uuid needs to be deleted 
-    :parm bucket:bucket to delete from 
-    """
     error_msg = None 
-    count = 0 
+    count = 0
     for filename in deleted_filelist:    
         try: 
-            if delete_file_s3(filename, bucket):
-                count += 1
+            s3object = s3.Object(bucket, filename)
+            response = s3object.delete()
+            count += 1
+            #print("Response: ", response)
+            #print(f"Deleted filenames: {filename} from bucket {bucket}")
         except ClientError as e: 
             logging.error(e)
             error_msg += e
     print('Deleted ', count, " records from S3 ", bucket)
+        
     return error_msg
 
 # Requires open_s3_file(bucket, filename),  s3_list_filenames(bucket), delete_files_s3(filename_list, bucket)
@@ -242,13 +221,12 @@ def delete_stac_s3(bucket_geojson, bucket_template):
         lastRun = open_file_s3(bucket_template, 'lastRun.txt')
         #ccmeo_napl-ottawa_napl-ottawa-2001.geojson, or lastRun.replace('\r\n', ' ').split(' ')
         lastRun_list = lastRun.splitlines()
-        e = delete_files_s3(deleted_filelist=lastRun_list, bucket=bucket_geojson)
-        if e!= None: 
+        e = delete_filelist_s3(deleted_filelist=lastRun_list, bucket=bucket_geojson)
+        if e != None: 
             error_msg += e
     else: 
         print("No existing lastRun.txt")
     return error_msg
-
 
 # Open files from s3 bucket
 def open_file_s3(bucket, filename):
@@ -284,7 +262,7 @@ def list_filenames_s3(bucket):
     :parm bucket: name of the bucket 
     :return a list of filenames within the bucket 
     """
-    s3 =boto3.resource("s3")
+    s3 = boto3.resource("s3")
     my_bucket = s3.Bucket(bucket)
     filename_list = []
     count = 0 

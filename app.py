@@ -178,7 +178,6 @@ def lambda_handler(event, context):
                     msg = upload_json_s3(item_name, bucket=geocore_to_parquet_bucket_name, json_data=item_geocore_updated, object_name=None)
 =======
                     msg = upload_file_s3(item_name, bucket=GEOCORE_TO_PARQUET_BUCKET_NAME, json_data=item_geocore_updated, object_name=None)
->>>>>>> Stashed changes
                     if msg == True: 
                         print(f'Finished mapping item : {item_id}, uploaded the file to bucket: {geocore_to_parquet_bucket_name}') 
         

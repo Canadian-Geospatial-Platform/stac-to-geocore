@@ -680,4 +680,4 @@ def update_geocore_dict(geocore_features_dict, properties_dict,geometry_dict):
         "type": "FeatureCollection",
         "features": [geocore_features_dict]
             }
-    return geocore_updateda
+    return geocore_updated

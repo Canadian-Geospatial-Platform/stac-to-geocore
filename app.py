@@ -31,6 +31,8 @@ useLimits_fr = 'Licence du gouvernement ouvert - Canada http://ouvert.canada.ca/
 spatialRepresentation = 'grid; grille'
 type_data = 'dataset; jeuDonnées'
 topicCategory = 'imageryBaseMapsEarthCover'
+disclaimer_en = '**This third party metadata element follows the Spatio Temporal Asset Catalog (STAC) specification**'
+disclaimer_fr = '**Cet élément de métadonnées tiers suit la spécification Spatio Temporal Asset Catalog (STAC)**'
 contact = [{
         'organisation':{
             'en':'Government of Canada;Natural Resources Canada;Strategic Policy and Innovation Sector',
@@ -100,6 +102,8 @@ def lambda_handler(event, context):
         response_root = requests.get(f'{api_root}/')
         root_data = json.loads(response_root.text)   
         root_id = root_data['id']
+        if root_id.isspace()==False:
+            root_id=root_id.replace(' ', '-')
         root_des = root_data['description']
         root_links = root_data['links']
         coll_bbox = collection_data[1]['extent']['spatial']['bbox'][0] # required for geocore properties bounding box, here we use the first collection 
@@ -459,8 +463,11 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
     # The shared attributes between Items and Collections  
     #descrption 
     if description_en!= None and description_fr != None: 
-        properties_dict['description'].update({"en": description_en})
-        properties_dict['description'].update({"fr": description_fr})
+        properties_dict['description'].update({"en": description_en + ' ' + disclaimer_en})
+        properties_dict['description'].update({"fr": description_fr + ' ' + disclaimer_fr})
+    else: 
+        properties_dict['description'].update({"en": disclaimer_en})
+        properties_dict['description'].update({"fr": disclaimer_fr})
      #keywords
     if keywords_en!= None and keywords_fr != None: 
         properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + keywords_en})
@@ -622,8 +629,11 @@ def root_to_features_properties(geocore_features_dict,root_name, root_links, roo
     # The shared attributes between Items and Collections  
     #descrption 
     if root_des!= None: 
-        properties_dict['description'].update({"en": root_des})
-        properties_dict['description'].update({"fr": root_des})
+        properties_dict['description'].update({"en": root_des + ' ' + disclaimer_en})
+        properties_dict['description'].update({"fr": root_des + ' ' + disclaimer_fr })
+    else: 
+        properties_dict['description'].update({"en": disclaimer_fr})
+        properties_dict['description'].update({"fr": disclaimer_fr })
      #keywords
     properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + source})
     properties_dict['keywords'].update({"fr": 'SpatioTemporal Asset Catalog, ' + source})
@@ -680,4 +690,4 @@ def update_geocore_dict(geocore_features_dict, properties_dict,geometry_dict):
         "type": "FeatureCollection",
         "features": [geocore_features_dict]
             }
-    return geocore_updateda
+    return geocore_updated

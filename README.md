@@ -1,4 +1,6 @@
-# STAC_to_GeoCore
+[![Build stac-to-geocore AWS Lambda](https://github.com/Canadian-Geospatial-Platform/stac-to-geocore/actions/workflows/zip-deploy.yaml/badge.svg)](https://github.com/Canadian-Geospatial-Platform/stac-to-geocore/actions/workflows/zip-deploy.yaml)
+
+# stac-to-geocore transformation
 SpatioTemporal Asset Catalog (STAC) is a Cloud-native geospatial standard. STAC key components are items, catalogs, collections, and the STAC API. STAC items are simply GeoJSON Features with a well-defined set of additional attributes ("foreign members"). For more information, refer to the [STAC Specification](https://github.com/radiantearth/stac-spec), [STAC page](https://stacspec.org/en), and [STAC index](https://stacindex.org/catalogs)
 
 The STAC harvest and translate process is Harvest -> STAC to GeoCore Tranform -> GeoCore to Parquet -> Geo (search).

@@ -1,4 +1,4 @@
-name: Build deployment AWS Lambdas as ZIP
+name: Build stac-to-geocore AWS Lambda
 on:
   push:
     branches:

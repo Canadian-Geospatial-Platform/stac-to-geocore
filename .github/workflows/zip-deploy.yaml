@@ -1,9 +1,11 @@
-name: Build deployment AWS Lambdas as ZIP
+name: Build stac-to-geocore AWS Lambda
 on:
   push:
     branches:
       - 'main' 
       - 'master'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest

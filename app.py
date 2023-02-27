@@ -31,8 +31,8 @@ useLimits_fr = 'Licence du gouvernement ouvert - Canada http://ouvert.canada.ca/
 spatialRepresentation = 'grid; grille'
 type_data = 'dataset; jeuDonnées'
 topicCategory = 'imageryBaseMapsEarthCover'
-disclaimer_en = '**This third party metadata element follows the Spatio Temporal Asset Catalog (STAC) specification**'
-disclaimer_fr = '**Cet élément de métadonnées tiers suit la spécification Spatio Temporal Asset Catalog (STAC)**'
+disclaimer_en = '\\n\\n**This third party metadata element follows the Spatio Temporal Asset Catalog (STAC) specification.**'
+disclaimer_fr = '\\n\\n**Cet élément de métadonnées tiers suit la spécification Spatio Temporal Asset Catalog (STAC).** **Cet élément de métadonnées provenant d’une tierce partie a été traduit à l\'aide d\'un outil de traduction automatisée (Amazon Translate).**'
 contact = [{
         'organisation':{
             'en':'Government of Canada;Natural Resources Canada;Strategic Policy and Innovation Sector',
@@ -111,11 +111,11 @@ def lambda_handler(event, context):
         geocore_features_dict = get_geocore_template(geocore_template_bucket_name,geocore_template_name) 
         # Mapping to geocore features geometry and properties 
         root_geometry_dict =to_features_geometry(geocore_features_dict, bbox=coll_bbox, geometry_type='Polygon')
-        root_properties_dict = root_to_features_properties(geocore_features_dict,root_name, root_links, root_id, root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory)
+        root_properties_dict = root_to_features_properties(geocore_features_dict,root_name, root_links, root_id, source, root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory)
         # Update the geocore body and finish mapping 
         root_geocore_updated = update_geocore_dict(geocore_features_dict=geocore_features_dict, properties_dict =root_properties_dict ,geometry_dict=root_geometry_dict)
         # upload the stac geocore to a S3 
-        root_upload = source + '_root_' + root_id + '.geojson'
+        root_upload = source + '-root-' + root_id + '.geojson'
         msg = upload_file_s3(root_upload, bucket=geocore_to_parquet_bucket_name, json_data=root_geocore_updated, object_name=None)
         if msg == True: 
             print(f'Finished mapping root : {root_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')    
@@ -127,12 +127,12 @@ def lambda_handler(event, context):
             
             coll_features_dict = get_geocore_template(geocore_template_bucket_name, geocore_template_name)
             coll_geometry_dict =to_features_geometry(geocore_features_dict=coll_features_dict, bbox=coll_bbox, geometry_type='Polygon')
-            coll_properties_dict = to_features_properties(geocore_features_dict=coll_features_dict, coll_dict=coll_dict, item_dict=None,stac_type='collection', root_name=root_name, root_id = root_id, 
+            coll_properties_dict = to_features_properties(geocore_features_dict=coll_features_dict, coll_dict=coll_dict, item_dict=None,stac_type='collection', root_name=root_name, root_id = root_id,source=source, 
                                                           status=status,maintenance=maintenance, useLimits_en=useLimits_en,
                                                           useLimits_fr=useLimits_fr,spatialRepresentation=spatialRepresentation,contact=contact, type_data=type_data,topicCategory=topicCategory)
             coll_geocore_updated = update_geocore_dict(geocore_features_dict=coll_features_dict, properties_dict =coll_properties_dict, geometry_dict=coll_geometry_dict)
             
-            coll_name = source + '_' + coll_id + '.geojson'
+            coll_name = source + '-' + coll_id + '.geojson'
             msg = upload_file_s3(coll_name, bucket=geocore_to_parquet_bucket_name, json_data=coll_geocore_updated, object_name=None)
             if msg == True: 
                 print(f'Finished mapping Collection : {coll_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')
@@ -150,11 +150,11 @@ def lambda_handler(event, context):
                     #TODO add error handling for the item mapping to geocore 
                     item_features_dict = get_geocore_template(geocore_template_bucket_name,geocore_template_name)
                     item_geometry_dict =to_features_geometry(geocore_features_dict=item_features_dict, bbox=item_bbox, geometry_type='Polygon')
-                    item_properties_dict = to_features_properties(geocore_features_dict=item_features_dict, coll_dict=coll_dict, item_dict=item_dict,stac_type='item', root_name=root_name, root_id=root_id, 
+                    item_properties_dict = to_features_properties(geocore_features_dict=item_features_dict, coll_dict=coll_dict, item_dict=item_dict,stac_type='item', root_name=root_name, root_id=root_id, source=source,
                                                                   status=status,maintenance=maintenance, useLimits_en=useLimits_en,
                                                                   useLimits_fr=useLimits_fr,spatialRepresentation=spatialRepresentation,contact=contact, type_data=type_data,topicCategory=topicCategory) 
                     item_geocore_updated = update_geocore_dict(geocore_features_dict=item_features_dict, properties_dict =item_properties_dict ,geometry_dict=item_geometry_dict)
-                    item_name = source + '_' + coll_id + '_' + item_id + '.geojson'
+                    item_name = source + '-' + coll_id + '-' + item_id + '.geojson'
                     msg = upload_file_s3(item_name, bucket=geocore_to_parquet_bucket_name, json_data=item_geocore_updated, object_name=None)
                     if msg == True: 
                         print(f'Finished mapping item : {item_id}, uploaded the file to bucket: {geocore_to_parquet_bucket_name}')  
@@ -398,13 +398,13 @@ def assets_to_properties_options(assets_list):
 # stac_to_features_properties 
 #TODO implement *args and **kwargs for properties function 
 # stac_to_features_properties 
-def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type, root_name,root_id,status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
+def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type, root_name,root_id,source,status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
     properties_dict = geocore_features_dict['properties']
     coll_id, bbox, time_begin, time_end, coll_links, coll_assets, title_en, title_fr, description_en, description_fr, keywords_en, keywords_fr = get_collection_fields(coll_dict)
     if stac_type == 'item':
         item_id, bbox, item_links, item_assets, item_properties = get_item_fields(item_dict) 
          #id
-        properties_dict.update({"id": item_id})
+        properties_dict.update({"id": source + '-' + coll_id + '-' + item_id})
         #title 
         item_date= datetime.strptime(item_properties['datetime'], '%Y-%m-%dT%H:%M:%SZ')
         yr = item_date.strftime("%Y")  
@@ -412,7 +412,7 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
             properties_dict['title'].update({"en": yr + ' - ' + title_en})
             properties_dict['title'].update({"fr": yr + ' - ' + title_fr})
         #parentIdentifier
-        properties_dict.update({"parentIdentifier": coll_id})
+        properties_dict.update({"parentIdentifier": source + '-' + coll_id})
         #date
         if 'created' in item_properties.keys(): 
             item_created = item_properties['created']
@@ -434,13 +434,13 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
 
     else:       
         #id
-        properties_dict.update({"id": coll_id})
+        properties_dict.update({"id": source + '-' + coll_id})
         #title 
         if title_en != None and title_fr!= None: 
             properties_dict['title'].update({"en": 'Collection - ' + title_en})
             properties_dict['title'].update({"fr": 'Collection - ' + title_fr})
         #parentIdentifier: root id 
-        properties_dict.update({"parentIdentifier": root_id})
+        properties_dict.update({"parentIdentifier": source + '-root-' + root_id})
         # date: None for STAC collection 
         # Type: hardcoded 
         #temporalExtent
@@ -470,8 +470,8 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
         properties_dict['description'].update({"fr": disclaimer_fr})
      #keywords
     if keywords_en!= None and keywords_fr != None: 
-        properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + keywords_en})
-        properties_dict['keywords'].update({"fr": 'SpatioTemporal Asset Catalog, ' + keywords_fr})
+        properties_dict['keywords'].update({"en": 'STAC, ' + source + keywords_en})
+        properties_dict['keywords'].update({"fr": 'STAC, ' + source + keywords_fr})
     # topicCategory 
     properties_dict.update({"topicCategory": topicCategory})
     properties_dict.update({"type": type_data})
@@ -608,11 +608,11 @@ def get_item_fields(item_dict):
         item_properties = None 
     return item_id, item_bbox, item_links, item_assets, item_properties; 
 
-def root_to_features_properties(geocore_features_dict,root_name, root_links, root_id, root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
+def root_to_features_properties(geocore_features_dict,root_name, root_links, root_id, source, root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
     properties_dict = geocore_features_dict['properties']
     root_name_en,root_name_fr = root_name.split('/')
     #id
-    properties_dict.update({"id": root_id})
+    properties_dict.update({"id": source + '-root-' + root_id})
     #title = root name 
     properties_dict['title'].update({"en": 'Root  - ' + root_name_en})
     properties_dict['title'].update({"fr": 'Racine - ' + root_name_fr})
@@ -629,14 +629,14 @@ def root_to_features_properties(geocore_features_dict,root_name, root_links, roo
     # The shared attributes between Items and Collections  
     #descrption 
     if root_des!= None: 
-        properties_dict['description'].update({"en": root_des + ' ' + disclaimer_en})
-        properties_dict['description'].update({"fr": root_des + ' ' + disclaimer_fr })
+        properties_dict['description'].update({"en": root_des + '.' + disclaimer_en})
+        properties_dict['description'].update({"fr": root_des + '.' + disclaimer_fr })
     else: 
-        properties_dict['description'].update({"en": disclaimer_fr})
+        properties_dict['description'].update({"en": disclaimer_en})
         properties_dict['description'].update({"fr": disclaimer_fr })
      #keywords
-    properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + source})
-    properties_dict['keywords'].update({"fr": 'SpatioTemporal Asset Catalog, ' + source})
+    properties_dict['keywords'].update({"en": 'STAC, ' + 'root, ' + source})
+    properties_dict['keywords'].update({"fr": 'STAC, ' + 'Racine, ' + source})
     # topicCategory 
     properties_dict.update({"topicCategory": topicCategory})
     properties_dict.update({"type": type_data})

@@ -80,6 +80,7 @@ def lambda_handler(event, context):
     # Before harvesting the STAC api, we check the api connectivity first   
     try: 
         response = requests.get(f'{api_root}/collections/')
+        print(response)
     except: 
         error_msg = 'Connectivity issue: error trying to access: ' + api_root + '/collections'
     if response.status_code == 200:
@@ -94,7 +95,7 @@ def lambda_handler(event, context):
         if e != None: 
             error_msg += e
         print('Creating a new lastRun.txt')
-        f = open("lastRun.txt","w+")         
+        #f = open("lastRun.txt","r+")         
         str_data = json.loads(response.text)
         collection_data = str_data['collections']
               
@@ -119,7 +120,7 @@ def lambda_handler(event, context):
         msg = upload_file_s3(root_upload, bucket=geocore_to_parquet_bucket_name, json_data=root_geocore_updated, object_name=None)
         if msg == True: 
             print(f'Finished mapping root : {root_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')    
-            f.write(f"{root_upload}\n") 
+           # f.write(f"{root_upload}\n") 
         
         # Collection mapping 
         for coll_dict in collection_data:
@@ -136,7 +137,7 @@ def lambda_handler(event, context):
             msg = upload_file_s3(coll_name, bucket=geocore_to_parquet_bucket_name, json_data=coll_geocore_updated, object_name=None)
             if msg == True: 
                 print(f'Finished mapping Collection : {coll_id}, and uploaded the file to bucket: {geocore_to_parquet_bucket_name}')
-                f.write(f"{coll_name}\n")        
+                #f.write(f"{coll_name}\n")        
             # STAC item to GeoCore mapping 
             #TODO add error handling if reuqest is null 
             item_response = requests.get(f'{api_root}/collections/{coll_id}/items')
@@ -158,10 +159,10 @@ def lambda_handler(event, context):
                     msg = upload_file_s3(item_name, bucket=geocore_to_parquet_bucket_name, json_data=item_geocore_updated, object_name=None)
                     if msg == True: 
                         print(f'Finished mapping item : {item_id}, uploaded the file to bucket: {geocore_to_parquet_bucket_name}')  
-                        f.write(f"{item_name}\n")       
+                        #f.write(f"{item_name}\n")       
         # Step 6: Upload the last Run.txt to the S3 bucket after the datecube is all process 
-        f.close()   
-        msg = upload_file_s3(filename='lastRun.txt', bucket=geocore_template_bucket_name, json_data = None, object_name=None)
+        #f.close()   
+        #msg = upload_file_s3(filename='lastRun.txt', bucket=geocore_template_bucket_name, json_data = None, object_name=None)
         if msg == True: 
             print(f'Finished mapping the STAC datacube and uploaded the lastRun.txt to bucket: {geocore_template_name}')    
     else:
@@ -412,7 +413,7 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
             properties_dict['title'].update({"en": yr + ' - ' + title_en})
             properties_dict['title'].update({"fr": yr + ' - ' + title_fr})
         #parentIdentifier
-        properties_dict.update({"parentIdentifier": source + '-' + coll_id})
+        properties_dict.update({"parentIdentifier": source + '-'+ coll_id})
         #date
         if 'created' in item_properties.keys(): 
             item_created = item_properties['created']
@@ -440,7 +441,7 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
             properties_dict['title'].update({"en": 'Collection - ' + title_en})
             properties_dict['title'].update({"fr": 'Collection - ' + title_fr})
         #parentIdentifier: root id 
-        properties_dict.update({"parentIdentifier": source + '-root-' + root_id})
+        properties_dict.update({"parentIdentifier":  source + '-root-'+ root_id})
         # date: None for STAC collection 
         # Type: hardcoded 
         #temporalExtent
@@ -470,8 +471,8 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
         properties_dict['description'].update({"fr": disclaimer_fr})
      #keywords
     if keywords_en!= None and keywords_fr != None: 
-        properties_dict['keywords'].update({"en": 'STAC, ' + source + keywords_en})
-        properties_dict['keywords'].update({"fr": 'STAC, ' + source + keywords_fr})
+        properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + 'stac, ' + keywords_en})
+        properties_dict['keywords'].update({"fr": 'SpatioTemporal Asset Catalog, ' + 'stac, ' + keywords_fr})
     # topicCategory 
     properties_dict.update({"topicCategory": topicCategory})
     properties_dict.update({"type": type_data})
@@ -608,7 +609,7 @@ def get_item_fields(item_dict):
         item_properties = None 
     return item_id, item_bbox, item_links, item_assets, item_properties; 
 
-def root_to_features_properties(geocore_features_dict,root_name, root_links, root_id, source, root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
+def root_to_features_properties(geocore_features_dict,root_name, root_links, root_id,source,root_des, coll_bbox, status,maintenance, useLimits_en,useLimits_fr,spatialRepresentation,contact, type_data,topicCategory): 
     properties_dict = geocore_features_dict['properties']
     root_name_en,root_name_fr = root_name.split('/')
     #id
@@ -635,8 +636,8 @@ def root_to_features_properties(geocore_features_dict,root_name, root_links, roo
         properties_dict['description'].update({"en": disclaimer_en})
         properties_dict['description'].update({"fr": disclaimer_fr })
      #keywords
-    properties_dict['keywords'].update({"en": 'STAC, ' + 'root, ' + source})
-    properties_dict['keywords'].update({"fr": 'STAC, ' + 'Racine, ' + source})
+    properties_dict['keywords'].update({"en": 'SpatioTemporal Asset Catalog, ' + 'stac, '+ source})
+    properties_dict['keywords'].update({"fr": 'SpatioTemporal Asset Catalog, ' + 'stac, ' + source})
     # topicCategory 
     properties_dict.update({"topicCategory": topicCategory})
     properties_dict.update({"type": type_data})

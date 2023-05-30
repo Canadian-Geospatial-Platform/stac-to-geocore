@@ -1,5 +1,6 @@
 import requests
 import os 
+import re 
 import json
 import logging 
 import boto3 
@@ -169,6 +170,7 @@ def lambda_handler(event, context):
         error_msg = 'Connectivity is fine but not return a HTTP 200 OK for '+  api_root + '/collections' + ' STAC translation is not initiated'
         #return error_msg
     print(error_msg)
+
 
 def delete_filelist_s3(deleted_filelist, bucket):
     """ Delete the STAC JSON files in deleted_filelist from an s3 bucket
@@ -409,9 +411,19 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
         #title 
         item_date= datetime.strptime(item_properties['datetime'], '%Y-%m-%dT%H:%M:%SZ')
         yr = item_date.strftime("%Y")  
-        if title_en != None and title_fr!= None: 
+        custom_coll = ["monthly-vegetation-parameters-20m-v1", "hrdem-lidar"]
+        if title_en != None and title_fr!= None and coll_id not in  custom_coll: 
             properties_dict['title'].update({"en": yr + ' - ' + title_en})
             properties_dict['title'].update({"fr": yr + ' - ' + title_fr})
+        elif title_en != None and title_fr!= None and coll_id == "monthly-vegetation-parameters-20m-v1": 
+            properties_dict['title'].update({"en": item_id.split('-')[-1] + ' - ' + title_en})
+            properties_dict['title'].update({"fr": item_id.split('-')[-1] + ' - ' + title_fr})
+            print('test properti title is ', properties_dict['title'])
+        elif title_en != None and title_fr!= None and coll_id == "hrdem-lidar": 
+            title_header = re.search(r"(?<=-)[A-Za-z_]+", item_id).group().replace('_', ' ')
+            properties_dict['title'].update({"en": yr + ' ' + title_header + ' - '+ title_en})
+            properties_dict['title'].update({"fr": yr + ' ' + title_header + ' - '+ title_fr})
+            print('test properti title is ', properties_dict['title'])
         #parentIdentifier
         properties_dict.update({"parentIdentifier": source + '-'+ coll_id})
         #date

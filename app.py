@@ -7,15 +7,15 @@ import boto3
 from datetime import datetime
 from botocore.exceptions import ClientError
 
-""" environment variables for lambda
+# environment variables for lambda
 geocore_template_bucket_name = os.environ['GEOCORE_TEMPLATE_BUCKET_NAME']
 geocore_template_name = os.environ['GEOCORE_TEMPLATE_NAME']
 geocore_to_parquet_bucket_name = os.environ['GEOCORE_TO_PARQUET_BUCKET_NAME']
 api_root = os.environ['STAC_API_ROOT']
 root_name = os.environ['ROOT_NAME']
 source = os.environ['SOURCE']
-""" 
-
+ 
+"""
 #dev setting  -- comment out for release
 geocore_template_bucket_name = 'webpresence-geocore-template-dev'
 geocore_template_name = 'geocore-format-null-template.json'
@@ -23,7 +23,8 @@ geocore_to_parquet_bucket_name = "webpresence-geocore-json-to-geojson-dev" #s3 f
 api_root = 'https://datacube.services.geo.ca/api'
 root_name = "CCMEO Datacube API / CCCOT Cube de données API" #must provide en and fr 
 source='ccmeo'
-    
+"""
+ 
 # Hardcoded variables for the STAC to GeoCore translation 
 status = 'unknown'
 maintenance = 'unknown' 
@@ -433,9 +434,10 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
             properties_dict['date']['published'].update({"date": item_created})
             properties_dict['date']['created'].update({"text": 'creation; création'})
             properties_dict['date']['created'].update({"date": item_created})
-            properties_dict['temporalExtent'].update({"begin": item_date.strftime("%Y-%m-%d")})
-        #temporalExtent: only begin date for itmem 
+        #temporalExtent: begin is the datatime, hard coded 'Present'as end   
         properties_dict['temporalExtent'].update({"begin": item_date.strftime("%Y-%m-%d")})   
+        properties_dict['temporalExtent'].update({"end": 'Present'})   
+        
         #options  
         links_list = links_to_properties_options(links_list=item_links, id=item_id, root_name=root_name, title_en=title_en, title_fr=title_fr, stac_type='item')
         if item_assets:
@@ -460,9 +462,15 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
         if time_begin: 
             time_begin= datetime.strptime(time_begin, '%Y-%m-%dT%H:%M:%SZ')
             properties_dict['temporalExtent'].update({"begin": time_begin.strftime("%Y-%m-%d")})
+        else:
+            properties_dict['temporalExtent'].update({"begin": '0001-01-01'}) 
+        
         if time_end:  
             time_end= datetime.strptime(time_end, '%Y-%m-%dT%H:%M:%SZ')
             properties_dict['temporalExtent'].update({"end": time_end.strftime("%Y-%m-%d")})
+        else: #hard code end 'Present', required for page to load 
+            properties_dict['temporalExtent'].update({"end": 'Present'})
+            
         #options  
         links_list = links_to_properties_options(links_list=coll_links, id=coll_id, root_name=root_name, title_en=title_en, title_fr=title_fr, stac_type='item')
         if coll_assets:
@@ -676,6 +684,9 @@ def root_to_features_properties(geocore_features_dict,root_name, root_links, roo
     # Skipped: credits, cited, distributor,sourceSystemName
     # options 
     properties_dict.update({'options': options_list})
+    # Hard code end 'Present'
+    properties_dict['temporalExtent'].update({"end":'Present'})
+    properties_dict['temporalExtent'].update({"begin": '0001-01-01'}) 
     return (properties_dict)
 
 # requires open_file_s3()

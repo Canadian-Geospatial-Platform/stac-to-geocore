@@ -436,7 +436,7 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
             properties_dict['date']['created'].update({"date": item_created})
         #temporalExtent: begin is the datatime, hard coded 'Present'as end   
         properties_dict['temporalExtent'].update({"begin": item_date.strftime("%Y-%m-%d")})   
-        properties_dict['temporalExtent'].update({"end": 'Present'})   
+        properties_dict['temporalExtent'].update({"end": item_date.strftime("%Y-%m-%d")})   # change temporal extent to date for temporal filter 
         
         #options  
         links_list = links_to_properties_options(links_list=item_links, id=item_id, root_name=root_name, title_en=title_en, title_fr=title_fr, stac_type='item')
@@ -469,7 +469,7 @@ def to_features_properties(geocore_features_dict, coll_dict, item_dict,stac_type
             time_end= datetime.strptime(time_end, '%Y-%m-%dT%H:%M:%SZ')
             properties_dict['temporalExtent'].update({"end": time_end.strftime("%Y-%m-%d")})
         else: #hard code end 'Present', required for page to load 
-            properties_dict['temporalExtent'].update({"end": 'Present'})
+            properties_dict['temporalExtent'].update({"end": '0001-01-01'})
             
         #options  
         links_list = links_to_properties_options(links_list=coll_links, id=coll_id, root_name=root_name, title_en=title_en, title_fr=title_fr, stac_type='item')
@@ -685,7 +685,7 @@ def root_to_features_properties(geocore_features_dict,root_name, root_links, roo
     # options 
     properties_dict.update({'options': options_list})
     # Hard code end 'Present'
-    properties_dict['temporalExtent'].update({"end":'Present'})
+    properties_dict['temporalExtent'].update({"end":'0001-01-01'})
     properties_dict['temporalExtent'].update({"begin": '0001-01-01'}) 
     return (properties_dict)
 

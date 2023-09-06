@@ -8,24 +8,24 @@ Resources:
   STACtoGeoCoreNewFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
-    Handler: app.lambda_handler
-    CodeUri: stac-to-geocore #required if PackageType is Zip. The path to app.py and requirement.txt
-    Description: ''
-    MemorySize: 1024
-    Timeout: 900
-    Runtime: python3.9
-    Architectures:
-      - x86_64
-    Role: >-
-      arn:aws:iam::006288227511:role/hnap-json-harvester-LambdaExecutionRole-YGC4NRBOO685
-    Environment:
-      Variables:
-        GEOCORE_TEMPLATE_BUCKET_NAME: webpresence-geocore-template-dev
-        STAC_BUCKET_NAME: webpresence-stac-json-dev
-        STAC_GEOCORE_BUCKET_NAME: webpresence-geocore-json-to-geojson-dev
-    Events:
-      STACtoGeoCore:
-        Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-        Properties:
-          Path: /stac_to_geocore
-          Method: get
+      Handler: app.lambda_handler
+      CodeUri: stac-to-geocore #required if PackageType is Zip. The path to app.py and requirement.txt
+      Description: ''
+      MemorySize: 1024
+      Timeout: 900
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Role: >-
+        arn:aws:iam::006288227511:role/hnap-json-harvester-LambdaExecutionRole-YGC4NRBOO685
+      Environment:
+        Variables:
+          GEOCORE_TEMPLATE_BUCKET_NAME: webpresence-geocore-template-dev
+          STAC_BUCKET_NAME: webpresence-stac-json-dev
+          STAC_GEOCORE_BUCKET_NAME: webpresence-geocore-json-to-geojson-dev
+      Events:
+        STACtoGeoCore:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /stac_to_geocore
+            Method: get

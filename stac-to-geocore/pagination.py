@@ -1,6 +1,8 @@
 import requests
+import json 
 
-def _search_pages_get(url:str,payload:dict=None)->list:
+
+def search_pages_get(url: str, payload: dict = None) -> list:
     """
     A valid list of urls based on stac api link['next'] for the search endpoint
     
@@ -49,7 +51,7 @@ def _search_pages_get(url:str,payload:dict=None)->list:
                 pages.append(next_page)
             if returned < matched:
                 links = j['links']
-                next_page = _get_next_page(links)
+                next_page = get_next_page(links)
             else:
                 next_page = None
         else:
@@ -58,8 +60,8 @@ def _search_pages_get(url:str,payload:dict=None)->list:
     r.close()
     return pages
 
-def _get_next_page(links:list):
-    """Returns the next page link or None from STAC API links list"""
+def get_next_page(links:list):
+    """Returns the next page link or None from STAC API Search links list"""
     next_page = None
     for link in links:
         if link['rel'] == 'next':

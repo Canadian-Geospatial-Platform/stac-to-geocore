@@ -54,7 +54,31 @@ contact = [{
             'hoursofService': None, 
             'role': None, 
         }]
-        
+
+# Perpare for parametes required for the function 
+# Note: there is an 'Other' as a catch-all, other in English, Autre in French
+assets_type = {
+    'image/tiff; application=geotiff': 'TIFF', 
+    'image/tiff; application=geotiff; profile=cloud-optimized': 'TIFF', 
+    'image/jp2': 'JPEG 2000 (JP2)', 
+    'image/png': 'PNG', 
+    'image/jpeg': 'JPEG',
+    'text/xml': 'XML',  
+    'application/xml':'XML',
+    'application/json':'JSON', 
+    'text/plain': 'TXT',
+    'application/geo+json': 'GeoJSON',
+    'application/geopackage+sqlite3': 'GeoPackage (GPKG)',
+    'application/x-hdf5': 'HDF',
+    'application/x-hdf': 'HDF',
+    'application/zip ': 'ZIP'
+        }  
+assets_role = {
+    'thumbnail': 'Thumbnail',
+    'overview' : 'Overview', 
+    'data': 'Data', 
+    'metadata': 'Metadata'
+}
 # STAC to GeoCore translation functions 
 def update_dict(target_dict, updates):
     """Utility function to update a dictionary with new key-value pairs.
@@ -144,21 +168,45 @@ def links_to_properties_options(links_list, id, root_name, title_en, title_fr, s
 # A function to map STAC assets to GeoCore option 
 def assets_to_properties_options(assets_list): 
     """Mapping STAC Links object to GeoCore features properties options  
+    GeoCore options is a json array 
+        "options": [
+		{
+			"url":null,
+			"protocol":null,
+			"name": {
+				"en":null,
+				"fr":null
+				}
+            "description":{
+                "en":"type;format;languages",
+                "fr":"type;format;languages"
+            }
+	    }]
     :param assets_list: STAC collection or item assets object
     :return return list: geocore features properties option list  
     """ 
     return_list = []
     for var_dict in assets_list.values():
-        href, type_str, name = var_dict.get('href'), var_dict.get('type', '').replace(';', ','), var_dict.get('title', 'Unknown/Inconnu')
+        href, type_str, name, role = var_dict.get('href'), var_dict.get('type', ''), var_dict.get('title', 'Unknown/Inconnu'), ', '.join(var_dict.get('roles'))
         name_en, name_fr = name.split('/') if '/' in name else (name, name)
+        # Convert stac type_str to GeoCore format,return "Other" if type_str is not in assets_type
+        format = assets_type.get(type_str,"Other") 
+        format_en, format_fr = (format, format) if format != "Other" else ("Other", "Autre")
+        # Convert stac role to GeoCore type,return "Other" if role is not in assets_role
+        type =  assets_role.get(role,"Other") 
+        type_en, type_fr = (type, type) if type != "Other" else ("Other", "Autre")
+        #print(f'Type_str is: {type_str},  format: {format}')
+        #print(f'role is {role}, type: {type}')     
         option_dic = {
             "url": href,
             "protocol": 'Unknown',
             "name": {"en": f'Asset - {name_en}', "fr": f'Asset - {name_fr}'},
-            "description": {"en": f'unknown;{type_str};eng', "fr": f'unknown;{type_str};fra'}
+            "description": {"en": f'{type_en};{format_en};eng', "fr": f'{type_fr};{format_fr};fra'}
         }
         return_list.append(option_dic)
+        #print(json.dumps(return_list, indent=2))
     return return_list
+
 
 #root_to_features_properties 
 def root_to_features_properties(params, geocore_features_dict): 
@@ -352,8 +400,6 @@ def create_coll_dict(api_root):
 
 
 #Item_to_features_properties
-
-
 def item_to_features_properties(params, geocore_features_dict, item_dict, coll_id_dict):
     root_name = params['root_name']
     root_id = params['root_id']
@@ -406,13 +452,19 @@ def item_to_features_properties(params, geocore_features_dict, item_dict, coll_i
     #TemporalExtent 
     if 'created' in item_properties.keys(): 
         item_created = item_properties['created']
-        properties_dict['date']['published'].update({"text": 'publication; publication'})
-        properties_dict['date']['published'].update({"date": item_created})
-        properties_dict['date']['created'].update({"text": 'creation; création'})
-        properties_dict['date']['created'].update({"date": item_created})
+        update_dict(properties_dict['date']['published'], {
+        "text": 'publication; publication',
+        "date": item_created
+        })
+        
+        update_dict(properties_dict['date']['created'], {
+        "text": 'creation; création',
+        "date": item_created
+        })
     #temporalExtent: begin is the datatime, hard coded 'Present'as end   
-    properties_dict['temporalExtent'].update({"begin": item_date.strftime("%Y-%m-%d")})   
-    properties_dict['temporalExtent'].update({"end": 'Present'})   
+    update_dict(properties_dict['temporalExtent'], {
+    "begin": item_date.strftime("%Y-%m-%d"),
+    "end": 'Present'})
     
     #options  
     links_list = links_to_properties_options(links_list=item_links, id=item_id, root_name=root_name, title_en=title_en, title_fr=title_fr, stac_type='item')

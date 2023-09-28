@@ -55,7 +55,8 @@ contact = [{
             'role': None, 
         }]
 
-# Perpare for parametes required for the function 
+# Mapping from STAC assets type to GeoCore Data Resources format  
+# STAC media types: https://github.com/radiantearth/stac-spec/blob/master/best-practices.md#common-media-types-in-stac
 # Note: there is an 'Other' as a catch-all, other in English, Autre in French
 assets_type = {
     'image/tiff; application=geotiff': 'TIFF', 
@@ -72,13 +73,64 @@ assets_type = {
     'application/x-hdf5': 'HDF',
     'application/x-hdf': 'HDF',
     'application/zip ': 'ZIP'
-        }  
+        } 
+# Mapping from STAC assets role to GeoCore Data Resources type  
+# STAC roles: https://github.com/radiantearth/stac-spec/blob/master/item-spec/item-spec.md#asset-role-types
+# Note: there is an 'Other' as a catch-all, other in English, Autre in French
+# GCGEO content type: API, Application, Dataset, Supporting Document, Web Service
+
 assets_role = {
     'thumbnail': 'Thumbnail',
     'overview' : 'Overview', 
     'data': 'Data', 
     'metadata': 'Metadata'
 }
+
+# Mapping from STAC options rel to GeoCore type and format 
+# link_rel includes rel in catalog, collection, and item 
+links_rel = {
+    'item': {
+        'type': 'STAC Item / OGC API - Features',
+        'format': 'GeoJSON'
+        },
+    'collection': {
+        'type': 'STAC Collection',
+        'format': 'JSON'
+        },
+    'root': {
+        'type': 'STAC API',
+        'format': 'JSON'
+        },
+    'drived_from': {
+        'type': 'Supporting Document',
+        'format': 'JSON'
+        },
+    'license': {
+        'type': 'Supporting Document',
+        'format': 'JSON'
+        },
+    'data': {
+        'type': 'STAC Collection',
+        'format': 'JSON'
+        },
+    'service-desc': {
+        'type': 'Supporting Document',
+        'format': 'JSON'
+        },    
+    'service-doc': {
+        'type': 'Supporting Document',
+        'format': 'HTML'
+        },        
+     'conformance': {
+        'type': 'Supporting Document',
+        'format': 'JSON'
+        },        
+     'search': {
+        'type': 'Web Service',
+        'format': 'GeoJSON'
+        }              
+}
+
 # STAC to GeoCore translation functions 
 def update_dict(target_dict, updates):
     """Utility function to update a dictionary with new key-value pairs.
@@ -133,40 +185,150 @@ def to_features_geometry(geocore_features_dict, bbox, geometry_type='Polygon'):
     
     return geometry_dict
 
-# A function to map STAC links to GeoCore option 
-def links_to_properties_options(links_list, id, root_name, title_en, title_fr, stac_type): 
+# A function to map STAC Root links to GeoCore option 
+def root_links_to_properties_options(links_list, id, root_name, title_en, title_fr, stac_type): 
     """Mapping STAC Links object to GeoCore features properties options  
-    :param links_list: STAC collection or item links object
-    :param id: collection id or item id 
-    :param api_name_en/api_name_fr: STAC datacube English/French nama, hardcoded variables 
-    :param coll_title: 
-    :param stac_type: item or collection 
-    """   
+    GeoCore options is a json array 
+        "options": [
+		{
+			"url":null,
+			"protocol":null,
+			"name": {
+				"en":null,
+				"fr":null
+				}
+            "description":{
+                "en":"type;format;languages",
+                "fr":"type;format;languages"
+            }
+	    }]
+	 """
     return_list = []
     root_name_en,root_name_fr = root_name.split('/')
+    
     for var in links_list: 
-        href, rel, type_str, name = var.get('href'), var.get('rel'), var.get('type', '').replace(';', ','), var.get('title')
+        href, rel, name = var.get('href'), var.get('rel'), var.get('title')
         name_en, name_fr = {
-            'collection': (None, None),
-            'derived_from': (None, None),
             'self': ('Self - ' + id if stac_type != 'root' else 'Root - ' + root_name_en, 'Soi - ' + id if stac_type != 'root' else 'Racine - ' + root_name_fr),
             'root': ('Root - ' + root_name_en, 'Racine - ' + root_name_fr),
             'parent': ('Parent - ' + title_en if stac_type == 'item' and title_en else 'Parent links', 'Parente - ' + title_fr if stac_type == 'item' and title_fr else 'Parente liens'),
-            'items': ('Items listings', 'Éléments la liste')
+            'child':('Collection - ' + name, 'Collection - ' + name),
+            'data': ('Collections Listing', 'Collection Listing')
+           # 'service-desc': (name, name), 
+           # 'service-doc': (name, name), 
+           # 'conformance': (name, name), 
+           # 'search': (name, name)
         }.get(rel, (name if name else 'Unknown', name if name else 'Inconnue'))
+        # If rel is not a key in the dictionary, it defaults to a tuple where both elements are either the value of name (if name is not None) 
+        # or the strings 'Unknown' and 'Inconnue' for English and French, respectively.   
+                
+        # Convert to options type and format 
+        type, format = {
+            'self': (links_rel.get('root', {}).get('type'), links_rel.get('root', {}).get('format')),
+            'root': (links_rel.get('root', {}).get('type'), links_rel.get('root', {}).get('format')),
+            'parent': (links_rel.get('root', {}).get('type'), links_rel.get('root', {}).get('format')),
+            'child':(links_rel.get('collection', {}).get('type'), links_rel.get('collection', {}).get('format')),
+            'data': (links_rel.get('data', {}).get('type'), links_rel.get('data', {}).get('format')),
+            'service-desc': (links_rel.get('service-desc', {}).get('type'), links_rel.get('service-desc', {}).get('format')),
+            'service-doc': (links_rel.get('service-doc', {}).get('type'), links_rel.get('service-doc', {}).get('format')),
+            'conformance': (links_rel.get('conformance', {}).get('type'), links_rel.get('conformance', {}).get('format')),
+            'search': (links_rel.get('search', {}).get('type'), links_rel.get('search', {}).get('format'))
+        }.get(rel, ("Other", "Autre"))
                 
         if name_en and name_fr:
             option_dic = {
                 "url": href,
                 "protocol": 'Unknown',
                 "name": {"en": name_en, "fr": name_fr},
-                "description": {"en": f'unknown;{type_str};eng', "fr": f'unknown;{type_str};fra'}
+                "description": {"en": f'{type};{format};eng', "fr": f'{type};{format};fra'}
             }        
             return_list.append(option_dic)
     return (return_list)
 
+# A function to map STAC Collection links to GeoCore option 
+def coll_links_to_properties_options(links_list, id, root_name, stac_type): 
+    return_list = []
+    root_name_en,root_name_fr = root_name.split('/')
+    
+    for var in links_list: 
+        href, rel, name = var.get('href'), var.get('rel'), var.get('title')
+        name_en, name_fr = {
+            'self': ('Self - ' + id if stac_type != 'root' else 'Root - ' + root_name_en, 'Soi - ' + id if stac_type != 'root' else 'Racine - ' + root_name_fr),
+            'root': ('Root - ' + root_name_en, 'Racine - ' + root_name_fr),
+            'parent': ('Root - ' + root_name_en, 'Racine - ' + root_name_fr),
+            'child':('Item - ' + (name if name is not None else 'Unknown'), 'Item - ' + (name if name is not None else 'Unknown')),
+            'item':('Item - ' + (name if name is not None else 'Unknown'), 'Item - ' + (name if name is not None else 'Unknown')),
+            'items': ('Items Listing', 'Items Listing')
+            # 'license': (name, name), 
+            # 'derived_ from': (name, name),
+        }.get(rel, (name if name else 'Unknown', name if name else 'Inconnue'))
+        # If rel is not a key in the dictionary, it defaults to a tuple where both elements are either the value of name (if name is not None) 
+        # or the strings 'Unknown' and 'Inconnue' for English and French, respectively.   
+                
+        # Convert to options type and format 
+        type, format = {
+            'self': (links_rel.get('collection', {}).get('type'), links_rel.get('collection', {}).get('format')),
+            'root': (links_rel.get('root', {}).get('type'), links_rel.get('root', {}).get('format')),
+            'parent': (links_rel.get('root', {}).get('type'), links_rel.get('root', {}).get('format')),
+            'child':(links_rel.get('item', {}).get('type'), links_rel.get('item', {}).get('format')),
+            'items': (links_rel.get('item', {}).get('type'), links_rel.get('item', {}).get('format')),
+            'license': (links_rel.get('license', {}).get('type'), links_rel.get('license', {}).get('format')),
+            'derived_ from': (links_rel.get('derived_ from', {}).get('type'), links_rel.get('derived_ from', {}).get('format'))
+        }.get(rel, ("Other", "Autre"))
+                
+        if name_en and name_fr:
+            option_dic = {
+                "url": href,
+                "protocol": 'Unknown',
+                "name": {"en": name_en, "fr": name_fr},
+                "description": {"en": f'{type};{format};eng', "fr": f'{type};{format};fra'}
+            }        
+            return_list.append(option_dic)
+    return (return_list)
+    
+# A function to map STAC Item links to GeoCore option 
+def item_links_to_properties_options(links_list, id, root_name, coll_id, stac_type): 
+    return_list = []
+    root_name_en,root_name_fr = root_name.split('/')
+    
+    for var in links_list: 
+        href, rel, name = var.get('href'), var.get('rel'), var.get('title')
+        
+        # Skip the iteration if rel is 'collection', because it points to a relative url "../collection.json"
+        if rel == 'collection':
+            continue
+        
+        name_en, name_fr = {
+            'self': ('Self - ' + id if stac_type != 'root' else 'Root - ' + root_name_en, 'Soi - ' + id if stac_type != 'root' else 'Racine - ' + root_name_fr),
+            'root': ('Root - ' + root_name_en, 'Racine - ' + root_name_fr),
+            'parent': ('Collection - ' + coll_id, 'Collection - ' + coll_id),
+            'collection':('Collection - ' + coll_id, 'Collection - ' + coll_id),
+            # 'derived_ from': (name, name),
+        }.get(rel, (name if name else 'Unknown', name if name else 'Inconnue'))
+        # If rel is not a key in the dictionary, it defaults to a tuple where both elements are either the value of name (if name is not None) 
+        # or the strings 'Unknown' and 'Inconnue' for English and French, respectively.   
+                
+        # Convert to options type and format 
+        type, format = {
+            'self': (links_rel.get('item', {}).get('type'), links_rel.get('item', {}).get('format')),
+            'root': (links_rel.get('root', {}).get('type'), links_rel.get('root', {}).get('format')),
+            'parent': (links_rel.get('collection', {}).get('type'), links_rel.get('collection', {}).get('format')),
+            'collection': (links_rel.get('collection', {}).get('type'), links_rel.get('collection', {}).get('format')),
+            'derived_ from': (links_rel.get('derived_ from', {}).get('type'), links_rel.get('derived_ from', {}).get('format'))
+        }.get(rel, ("Other", "Autre"))
+                
+        if name_en and name_fr:
+            option_dic = {
+                "url": href,
+                "protocol": 'Unknown',
+                "name": {"en": name_en, "fr": name_fr},
+                "description": {"en": f'{type};{format};eng', "fr": f'{type};{format};fra'}
+            }        
+            return_list.append(option_dic)
+    return (return_list)
+    
 # A function to map STAC assets to GeoCore option 
-def assets_to_properties_options(assets_list): 
+def assets_to_properties_options(assets_list, assets_type, assets_role): 
     """Mapping STAC Links object to GeoCore features properties options  
     GeoCore options is a json array 
         "options": [
@@ -235,11 +397,12 @@ def root_to_features_properties(params, geocore_features_dict):
     update_dict(properties_dict['title'], {"en": f" Root  - {root_name_en}"})
     update_dict(properties_dict['title'], {"fr": f" Racine - {root_name_fr}"})    
 
-    #options  
-    links_list = links_to_properties_options(links_list=root_links, id=root_id, root_name=root_name, title_en=None, title_fr=None, stac_type='root')
+    #options
+    links_list = root_links_to_properties_options(links_list=root_links, id=root_id, root_name=root_name, title_en=None, title_fr=None, stac_type='root')
     options_list = links_list
+    print(f'This is option list before delete duplication: {json.dumps(options_list, indent=2)}')
     options_list = [i for n, i in enumerate(options_list) if i not in options_list[n + 1:]] # delete duplicates
-    
+    print(f'This is option list after delete duplication: {json.dumps(options_list, indent=2)}')
     #Descrption 
     en_desc = root_des + '.' + disclaimer_en if root_des else disclaimer_en
     fr_desc = root_des + '.' + disclaimer_fr if root_des else disclaimer_fr
@@ -308,8 +471,8 @@ def coll_to_features_properties(params, coll_dict,geocore_features_dict):
     update_dict(properties_dict['temporalExtent'], temporal_extent_updates)
 
     #options  
-    links_list = links_to_properties_options(links_list=coll_links, id=coll_id, root_name=root_name, title_en=title_en, title_fr=title_fr, stac_type='collection')
-    assets_list = assets_to_properties_options(assets_list=coll_assets) if coll_assets else []
+    links_list = coll_links_to_properties_options(links_list=coll_links, id=coll_id, root_name=root_name, stac_type='collection')
+    assets_list = assets_to_properties_options(assets_list=coll_assets, assets_type=assets_type, assets_role=assets_role) if coll_assets else []
     options_list = links_list+assets_list
     options_list = [i for n, i in enumerate(options_list) if i not in options_list[n + 1:]] # delete duplicates
 
@@ -466,9 +629,9 @@ def item_to_features_properties(params, geocore_features_dict, item_dict, coll_i
     "begin": item_date.strftime("%Y-%m-%d"),
     "end": 'Present'})
     
-    #options  
-    links_list = links_to_properties_options(links_list=item_links, id=item_id, root_name=root_name, title_en=title_en, title_fr=title_fr, stac_type='item')
-    assets_list = assets_to_properties_options(assets_list=item_assets) if item_assets else []
+    #options 
+    links_list = item_links_to_properties_options(links_list=item_links, id=item_id, root_name=root_name,coll_id=coll_id, stac_type='item')
+    assets_list = assets_to_properties_options(assets_list=item_assets, assets_type=assets_type, assets_role=assets_role) if item_assets else []
     options_list = links_list+assets_list
     options_list = [i for n, i in enumerate(options_list) if i not in options_list[n + 1:]] # delete duplicates
         

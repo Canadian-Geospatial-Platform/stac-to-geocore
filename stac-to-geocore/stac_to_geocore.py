@@ -594,12 +594,16 @@ def item_to_features_properties(params, geocore_features_dict, item_dict, coll_i
     #title 
     item_date= datetime.strptime(item_properties['datetime'], '%Y-%m-%dT%H:%M:%SZ')
     yr = item_date.strftime("%Y")  
-    custom_coll = ["monthly-vegetation-parameters-20m-v1", "hrdem-lidar"]
+    custom_coll = ["monthly-vegetation-parameters-20m-v1", "hrdem-lidar", "hrdem-arcticdem"]
     if title_en != None and title_fr!= None and coll_id not in  custom_coll: 
          update_dict(properties_dict, {'title':{'en':yr + ' - ' + title_en, 'fr':yr + ' - ' + title_fr}})
     elif title_en != None and title_fr!= None and coll_id == "monthly-vegetation-parameters-20m-v1": 
         # month+coll-title
         update_dict(properties_dict, {'title':{'en':item_id.split('-')[-1] + ' - ' + title_en, 'fr':item_id.split('-')[-1] + ' - ' + title_fr}})
+    elif title_en != None and title_fr!= None and coll_id == "hrdem-arcticdem" or coll_id == "hrdem-lidar": 
+        update_dict(properties_dict, {'title':{'en':yr + ' - ' + item_id + '-' + title_en, 'fr':yr + ' - ' + item_id + '-' + title_fr}})
+        
+    """
     elif title_en != None and title_fr!= None and coll_id == "hrdem-lidar": 
         # Get the location Seine Rat River from id MB-Seine_Rat_River-1m
         match = re.search(r"(?<=-)[A-Za-z_]+", item_id)
@@ -608,7 +612,8 @@ def item_to_features_properties(params, geocore_features_dict, item_dict, coll_i
         else:# Handle the case where no match is found, e.g., set a default value or raise a custom error
             title_header = item_id
         update_dict(properties_dict, {'title':{'en':yr + ' ' + title_header + ' - '+ title_en, 'fr':yr + ' ' + title_header + ' - '+ title_fr}}) 
-  
+    """
+    
     #parentIdentifier
     update_dict(properties_dict, {"parentIdentifier":  source + '-'+ coll_id})
     
@@ -682,4 +687,3 @@ def get_item_fields(item_dict):
     item_properties = item_dict.get('properties')
     coll_id = item_dict.get('collection')
     return item_id, item_bbox, item_links, item_assets, item_properties, coll_id; 
-

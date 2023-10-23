@@ -19,14 +19,14 @@ geocore_to_parquet_bucket_name = os.environ['GEOCORE_TO_PARQUET_BUCKET_NAME']
 api_root = os.environ['STAC_API_ROOT']
 root_name = os.environ['ROOT_NAME']
 source = os.environ['SOURCE']
-"""
 
+"""
 #dev setting  -- comment out for release
 geocore_template_bucket_name = 'webpresence-geocore-template-dev'
 geocore_template_name = 'geocore-format-null-template.json'
 geocore_to_parquet_bucket_name = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
 api_root = 'https://datacube.services.geo.ca/api'
-root_name = "CCMEO Datacube API / CCCOT Cube de données API" #must provide en and fr 
+root_name = "CCMEO Datacube/ CCCOT Cube de données" #must provide en and fr 
 source='ccmeo'
 
 

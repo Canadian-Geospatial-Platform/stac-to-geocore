@@ -387,7 +387,7 @@ def root_to_features_properties(params, geocore_features_dict):
     contact = params['contact']
     type_data = params['type_data']
     topicCategory = params['topicCategory']
-    
+    sourceSystemName = params['sourceSystemName']
     
     properties_dict = geocore_features_dict['properties']
     root_name_en,root_name_fr = root_name.split('/')
@@ -427,7 +427,9 @@ def root_to_features_properties(params, geocore_features_dict):
         'contact': contact,
         'options': options_list,
         'useLimits': {'en': useLimits_en, 'fr': useLimits_fr},
-        'temporalExtent': {'end': 'Present', 'begin': '0001-01-01'}
+        'temporalExtent': {'end': 'Present', 'begin': '0001-01-01'},
+        "sourceSystemName": sourceSystemName,
+        
     })
     #parentIdentifier: None for STAC catalog   
     #date: None for STAC collection 
@@ -452,6 +454,7 @@ def coll_to_features_properties(params, coll_dict,geocore_features_dict):
     contact = params['contact']
     type_data = params['type_data']
     topicCategory = params['topicCategory']
+    sourceSystemName = params["sourceSystemName"] 
     
     properties_dict = geocore_features_dict['properties']
     
@@ -500,6 +503,7 @@ def coll_to_features_properties(params, coll_dict,geocore_features_dict):
         'description': {'en': description_en_str, 'fr': description_fr_str},
         'keywords': {'en': keywords_en_str, 'fr': keywords_fr_str},
         "geometry": geometry_str, 
+        "sourceSystemName": sourceSystemName, 
           
     })
      
@@ -575,6 +579,7 @@ def item_to_features_properties(params, geocore_features_dict, item_dict, coll_i
     contact = params['contact']
     type_data = params['type_data']
     topicCategory = params['topicCategory']
+    sourceSystemName = params['sourceSystemName']
     
     properties_dict = geocore_features_dict['properties']
     # Get item level lelments 
@@ -663,6 +668,7 @@ def item_to_features_properties(params, geocore_features_dict, item_dict, coll_i
         'description': {'en': description_en_str, 'fr': description_fr_str},
         'keywords': {'en': keywords_en_str, 'fr': keywords_fr_str},
         "geometry": geometry_str, 
+        "sourceSystemName": sourceSystemName, 
           
     })
      
@@ -671,7 +677,7 @@ def item_to_features_properties(params, geocore_features_dict, item_dict, coll_i
     #skipped metadataStandard, metadataStandardVersion, metadataStandardVersion, graphicOverview, distributionFormat_name, distributionFormat_format
     #skipped: accessConstraints, otherConstraints, dateStamp, dataSetURI, locale,language
     #skipped: characterSet, environmentDescription,supplementalInformation
-    #skipped: credits, cited, distributor,sourceSystemName
+    #skipped: credits, cited, distributor
     # options 
     return (properties_dict)
 

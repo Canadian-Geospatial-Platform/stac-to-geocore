@@ -11,7 +11,7 @@ from pagination import *
 from s3_operations import *
 from stac_to_geocore import *
 
-"""
+
 # environment variables for lambda
 geocore_template_bucket_name = os.environ['GEOCORE_TEMPLATE_BUCKET_NAME']
 geocore_template_name = os.environ['GEOCORE_TEMPLATE_NAME']
@@ -19,15 +19,17 @@ geocore_to_parquet_bucket_name = os.environ['GEOCORE_TO_PARQUET_BUCKET_NAME']
 api_root = os.environ['STAC_API_ROOT']
 root_name = os.environ['ROOT_NAME']
 source = os.environ['SOURCE']
+sourceSystemName = os.environ['SOURCESYSTEMNAME']
 
-"""
-#dev setting  -- comment out for release
-geocore_template_bucket_name = 'webpresence-geocore-template-dev'
-geocore_template_name = 'geocore-format-null-template.json'
-geocore_to_parquet_bucket_name = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
-api_root = 'https://datacube.services.geo.ca/api'
-root_name = "CCMEO Datacube/ CCCOT Cube de données" #must provide en and fr 
-source='ccmeo'
+
+# #dev setting  -- comment out for release
+# geocore_template_bucket_name = 'webpresence-geocore-template-dev'
+# geocore_template_name = 'geocore-format-null-template.json'
+# geocore_to_parquet_bucket_name = "webpresence-geocore-json-to-geojson-dev" #s3 for geocore to parquet translation 
+# api_root = 'https://datacube.services.geo.ca/api'
+# root_name = "CCMEO Datacube/ CCCOT Cube de données" #must provide en and fr 
+# source='ccmeo'
+# sourceSystemName = 'ccmeo-datacube'
 
 
  
@@ -57,6 +59,8 @@ def lambda_handler(event, context):
     # Start the harvest and translation process if connection is okay 
     if response_root.status_code == 200:
         #Delete previous harvest included in lastRun.txt 
+        print(geocore_to_parquet_bucket_name)
+        print(geocore_template_bucket_name)
         e = delete_stac_s3(bucket_geojson=geocore_to_parquet_bucket_name, bucket_template=geocore_template_bucket_name)
         if e != None: 
             error_msg += e
@@ -97,7 +101,8 @@ def lambda_handler(event, context):
                 'spatialRepresentation': spatialRepresentation,
                 'contact': contact,
                 'type_data': type_data,
-                'topicCategory': topicCategory
+                'topicCategory': topicCategory,
+                'sourceSystemName': sourceSystemName
             }
             #print(f"This is the geocore_features_dict when it is in the params before root_to_features_properties\n {params['geocore_features_dict']}")
             root_properties_dict = root_to_features_properties(params, geocore_features_dict)
